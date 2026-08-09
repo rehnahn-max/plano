@@ -1,180 +1,144 @@
 /* =========================================================
-TRADE ANALYZER
-app.js
+PLANOS — APP.JS
+Conexão entre HTML + INDICADORES + GRÁFICO
+========================================================= */
 
-Controle principal da aplicação
-
-Nesta primeira versão:
-
-* Os dados são simulados
-* Os indicadores vêm do indicators.js
-* O histórico fica no localStorage
-* Nenhuma ordem real é executada
-  ========================================================= */
+import {
+analyzeMarket,
+formatIndicatorValue,
+getSignalClass
+} from "./indicators.js";
 
 /* =========================================================
 CONFIGURAÇÕES
 ========================================================= */
 
-const CONFIG = {
+const BINANCE_API =
+"https://api.binance.com/api/v3/klines";
 
-```
-historicoStorage:
-    "tradeAnalyzerHistorico",
+const CHART_LIBRARY =
+"https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js";
 
-maxHistorico:
-    50,
+const UPDATE_INTERVAL = 30000;
 
-intervaloSimulacao:
-    5000
-```
+const CANDLE_LIMIT = 200;
+
+/* =========================================================
+ESTADO
+========================================================= */
+
+const state = {
+
+
+symbol: "BTCUSDT",
+
+interval: "15m",
+
+candles: [],
+
+analysis: null,
+
+loading: false,
+
+chart: null,
+
+candleSeries: null,
+
+volumeSeries: null
+
 
 };
 
 /* =========================================================
-VARIÁVEIS
+ELEMENTOS
 ========================================================= */
 
-let candlesAtuais = [];
-
-let ultimaAnalise = null;
-
-let simulacaoAtiva = false;
-
-let intervaloSimulacao = null;
-
-/* =========================================================
-ELEMENTOS DO HTML
-========================================================= */
-
-const ativoSelect =
-document.getElementById("ativo");
+const assetSelect =
+document.getElementById("assetSelect");
 
 const timeframeSelect =
-document.getElementById("timeframe");
+document.getElementById("timeframeSelect");
 
-const periodoSelect =
-document.getElementById("periodo");
+const analyzeBtn =
+document.getElementById("analyzeBtn");
 
-const btnAnalisar =
-document.getElementById("btnAnalisar");
+const summaryAsset =
+document.getElementById("summaryAsset");
 
-const btnLimparHistorico =
-document.getElementById("btnLimparHistorico");
+const currentPrice =
+document.getElementById("currentPrice");
 
-/* =========================================================
-INFORMAÇÕES DO ATIVO
-========================================================= */
+const priceChange =
+document.getElementById("priceChange");
 
-const infoAtivo =
-document.getElementById("infoAtivo");
+const marketSignal =
+document.getElementById("marketSignal");
 
-const precoAtual =
-document.getElementById("precoAtual");
+const chartElement =
+document.getElementById("chart");
 
-const variacaoAtual =
-document.getElementById("variacaoAtual");
+const chartTitle =
+document.getElementById("chartTitle");
 
-const volumeAtual =
-document.getElementById("volumeAtual");
+const chartSubtitle =
+document.getElementById("chartSubtitle");
 
-/* =========================================================
-GRÁFICO
-========================================================= */
+const rsiValue =
+document.getElementById("rsiValue");
 
-const grafico =
-document.getElementById("grafico");
+const rsiBar =
+document.getElementById("rsiBar");
 
-const graficoStatus =
-document.getElementById("graficoStatus");
+const macdSignal =
+document.getElementById("macdSignal");
 
-const timeframeAtual =
-document.getElementById("timeframeAtual");
+const macdStatus =
+document.getElementById("macdStatus");
 
-/* =========================================================
-INDICADORES
-========================================================= */
+const emaSignal =
+document.getElementById("emaSignal");
 
-const rsiSinal =
-document.getElementById("rsiSinal");
+const emaStatus =
+document.getElementById("emaStatus");
 
-const rsiValor =
-document.getElementById("rsiValor");
+const volumeValue =
+document.getElementById("volumeValue");
 
-const rsiBarra =
-document.getElementById("rsiBarra");
+const volumeStatus =
+document.getElementById("volumeStatus");
 
-const macdSinal =
-document.getElementById("macdSinal");
+const analysisTitle =
+document.getElementById("analysisTitle");
 
-const macdValor =
-document.getElementById("macdValor");
+const analysisBadge =
+document.getElementById("analysisBadge");
 
-const emaSinal =
-document.getElementById("emaSinal");
+const analysisText =
+document.getElementById("analysisText");
 
-const emaValor =
-document.getElementById("emaValor");
+const trendValue =
+document.getElementById("trendValue");
 
-const volumeSinal =
-document.getElementById("volumeSinal");
+const momentumValue =
+document.getElementById("momentumValue");
 
-const volumeIndicador =
-document.getElementById("volumeIndicador");
+const volatilityValue =
+document.getElementById("volatilityValue");
 
-const bollingerSinal =
-document.getElementById("bollingerSinal");
+const confidenceValue =
+document.getElementById("confidenceValue");
 
-const bollingerValor =
-document.getElementById("bollingerValor");
+const signalCard =
+document.getElementById("signalCard");
 
-const tendenciaSinal =
-document.getElementById("tendenciaSinal");
+const signalTitle =
+document.getElementById("signalTitle");
 
-const tendenciaValor =
-document.getElementById("tendenciaValor");
+const signalDescription =
+document.getElementById("signalDescription");
 
-/* =========================================================
-RESULTADO
-========================================================= */
-
-const sinalPrincipal =
-document.getElementById("sinalPrincipal");
-
-const confiancaValor =
-document.getElementById("confiancaValor");
-
-const barraConfianca =
-document.getElementById("barraConfianca");
-
-const pontosAlta =
-document.getElementById("pontosAlta");
-
-const pontosBaixa =
-document.getElementById("pontosBaixa");
-
-const forcaSinal =
-document.getElementById("forcaSinal");
-
-/* =========================================================
-NÍVEIS
-========================================================= */
-
-const nivelEntrada =
-document.getElementById("nivelEntrada");
-
-const nivelStop =
-document.getElementById("nivelStop");
-
-const nivelAlvo =
-document.getElementById("nivelAlvo");
-
-/* =========================================================
-HISTÓRICO
-========================================================= */
-
-const historicoTabela =
-document.getElementById("historicoTabela");
+const signalConfidence =
+document.getElementById("signalConfidence");
 
 /* =========================================================
 INICIALIZAÇÃO
@@ -182,44 +146,106 @@ INICIALIZAÇÃO
 
 document.addEventListener(
 "DOMContentLoaded",
-iniciarAplicacao
+initialize
 );
 
-function iniciarAplicacao() {
+async function initialize() {
 
 ```
 console.log(
-    "Trade Analyzer iniciado."
+    "================================="
+);
+
+console.log(
+    "PLANOS — iniciando aplicação"
+);
+
+console.log(
+    "================================="
 );
 
 
-/*
-   Verifica se o motor de indicadores
-   está carregado.
-*/
+verifyHTML();
 
-if (
-    !window.TradeIndicators
-) {
 
-    console.error(
-        "indicators.js não foi carregado."
-    );
+setupEvents();
 
-    alert(
-        "Erro: indicators.js não foi carregado."
-    );
 
-    return;
+updateInterfaceTexts();
+
+
+try {
+
+    await loadChartLibrary();
+
+    createChart();
+
+    await loadMarketData();
+
+    startAutoUpdate();
+
 }
 
+catch (error) {
 
-configurarEventos();
+    console.error(
+        "Erro durante inicialização:",
+        error
+    );
 
-atualizarInterfaceInicial();
-
-carregarHistorico();
+    showError(
+        "Não foi possível iniciar o gráfico."
+    );
+}
 ```
+
+}
+
+/* =========================================================
+VERIFICAR HTML
+========================================================= */
+
+function verifyHTML() {
+
+
+const requiredElements = [
+
+    ["assetSelect", assetSelect],
+
+    ["timeframeSelect", timeframeSelect],
+
+    ["analyzeBtn", analyzeBtn],
+
+    ["chart", chartElement],
+
+    ["currentPrice", currentPrice],
+
+    ["marketSignal", marketSignal],
+
+    ["rsiValue", rsiValue],
+
+    ["macdSignal", macdSignal],
+
+    ["emaSignal", emaSignal],
+
+    ["volumeValue", volumeValue]
+];
+
+
+requiredElements.forEach(
+    ([name, element]) => {
+
+        if (!element) {
+
+            console.error(
+                `PLANOS: elemento #${name} não encontrado.`
+            );
+
+        }
+
+    }
+);
+
 
 }
 
@@ -227,126 +253,1325 @@ carregarHistorico();
 EVENTOS
 ========================================================= */
 
-function configurarEventos() {
+function setupEvents() {
 
 ```
-/*
-   Botão analisar
-*/
+if (assetSelect) {
 
-if (btnAnalisar) {
-
-    btnAnalisar.addEventListener(
-        "click",
-        executarAnalise
-    );
-
-}
-
-
-/*
-   Alteração do ativo
-*/
-
-if (ativoSelect) {
-
-    ativoSelect.addEventListener(
+    assetSelect.addEventListener(
         "change",
-        () => {
+        async () => {
 
-            atualizarAtivo();
+            state.symbol =
+                assetSelect.value;
 
+            updateInterfaceTexts();
+
+            await loadMarketData();
         }
     );
-
 }
 
-
-/*
-   Alteração do timeframe
-*/
 
 if (timeframeSelect) {
 
     timeframeSelect.addEventListener(
         "change",
-        () => {
+        async () => {
 
-            atualizarTimeframe();
+            state.interval =
+                timeframeSelect.value;
 
+            updateTimeButtons();
+
+            updateInterfaceTexts();
+
+            await loadMarketData();
         }
     );
+}
 
+
+if (analyzeBtn) {
+
+    analyzeBtn.addEventListener(
+        "click",
+        async () => {
+
+            await loadMarketData();
+        }
+    );
+}
+
+
+const timeButtons =
+    document.querySelectorAll(
+        ".time-button"
+    );
+
+
+timeButtons.forEach(
+    button => {
+
+        button.addEventListener(
+            "click",
+            async () => {
+
+                const timeframe =
+                    button.dataset.timeframe;
+
+
+                if (!timeframe) {
+                    return;
+                }
+
+
+                state.interval =
+                    timeframe;
+
+
+                if (timeframeSelect) {
+
+                    timeframeSelect.value =
+                        timeframe;
+                }
+
+
+                updateTimeButtons();
+
+                updateInterfaceTexts();
+
+                await loadMarketData();
+            }
+        );
+    }
+);
+
+
+window.addEventListener(
+    "resize",
+    resizeChart
+);
+```
+
+}
+
+/* =========================================================
+CARREGAR BIBLIOTECA DO GRÁFICO
+========================================================= */
+
+function loadChartLibrary() {
+
+```
+return new Promise(
+    (resolve, reject) => {
+
+        if (
+            window.LightweightCharts
+        ) {
+
+            console.log(
+                "Lightweight Charts já está disponível."
+            );
+
+            resolve();
+
+            return;
+        }
+
+
+        console.log(
+            "Carregando Lightweight Charts..."
+        );
+
+
+        const script =
+            document.createElement(
+                "script"
+            );
+
+
+        script.src =
+            CHART_LIBRARY;
+
+
+        script.async = true;
+
+
+        script.onload =
+            () => {
+
+                if (
+                    window.LightweightCharts
+                ) {
+
+                    console.log(
+                        "Lightweight Charts carregado com sucesso."
+                    );
+
+                    resolve();
+
+                }
+
+                else {
+
+                    reject(
+                        new Error(
+                            "Biblioteca carregada, mas LightweightCharts não foi encontrado."
+                        )
+                    );
+                }
+            };
+
+
+        script.onerror =
+            () => {
+
+                reject(
+                    new Error(
+                        "Falha ao carregar Lightweight Charts."
+                    )
+                );
+            };
+
+
+        document.head.appendChild(
+            script
+        );
+    }
+);
+```
+
+}
+
+/* =========================================================
+CRIAR GRÁFICO
+========================================================= */
+
+function createChart() {
+
+```
+if (!chartElement) {
+
+    throw new Error(
+        "Elemento #chart não encontrado."
+    );
+}
+
+
+if (
+    !window.LightweightCharts
+) {
+
+    throw new Error(
+        "Lightweight Charts não foi carregado."
+    );
 }
 
 
 /*
-   Limpar histórico
+   Remove a mensagem
+   "Carregando gráfico..."
 */
 
-if (btnLimparHistorico) {
+chartElement.innerHTML = "";
 
-    btnLimparHistorico.addEventListener(
-        "click",
-        limparHistorico
+
+const width =
+    Math.max(
+        chartElement.clientWidth,
+        300
     );
 
-}
+
+const height =
+    Math.max(
+        chartElement.clientHeight,
+        500
+    );
+
+
+console.log(
+    "Criando gráfico:",
+    width,
+    "x",
+    height
+);
+
+
+state.chart =
+    window.LightweightCharts.createChart(
+        chartElement,
+        {
+
+            width: width,
+
+            height: height,
+
+            layout: {
+
+                background: {
+                    color: "#090d13"
+                },
+
+                textColor: "#8c98aa"
+            },
+
+            grid: {
+
+                vertLines: {
+                    color: "#151c26"
+                },
+
+                horzLines: {
+                    color: "#151c26"
+                }
+            },
+
+            crosshair: {
+
+                mode:
+                    window.LightweightCharts.CrosshairMode.Normal
+            },
+
+            rightPriceScale: {
+
+                borderColor:
+                    "#202938",
+
+                scaleMargins: {
+
+                    top: 0.08,
+
+                    bottom: 0.25
+                }
+            },
+
+            timeScale: {
+
+                borderColor:
+                    "#202938",
+
+                timeVisible:
+                    true,
+
+                secondsVisible:
+                    false
+            }
+        }
+    );
+
+
+/*
+   VERSÃO 4.2.0
+   Usa addCandlestickSeries()
+*/
+
+state.candleSeries =
+    state.chart.addCandlestickSeries({
+
+        upColor: "#22c55e",
+
+        downColor: "#ef4444",
+
+        borderUpColor: "#22c55e",
+
+        borderDownColor: "#ef4444",
+
+        wickUpColor: "#22c55e",
+
+        wickDownColor: "#ef4444"
+    });
+
+
+state.volumeSeries =
+    state.chart.addHistogramSeries({
+
+        priceFormat: {
+            type: "volume"
+        },
+
+        priceScaleId: "",
+
+        color:
+            "rgba(59,130,246,0.35)"
+    });
+
+
+state.volumeSeries
+    .priceScale()
+    .applyOptions({
+
+        scaleMargins: {
+
+            top: 0.82,
+
+            bottom: 0
+        }
+    });
+
+
+state.chart
+    .timeScale()
+    .fitContent();
+
+
+console.log(
+    "Gráfico criado com sucesso."
+);
 ```
 
 }
 
 /* =========================================================
-INTERFACE INICIAL
+REDIMENSIONAR GRÁFICO
 ========================================================= */
 
-function atualizarInterfaceInicial() {
+function resizeChart() {
 
 ```
-atualizarAtivo();
-
-atualizarTimeframe();
-
-resetarIndicadores();
-```
-
-}
-
-/* =========================================================
-ATIVO
-========================================================= */
-
-function atualizarAtivo() {
-
-```
-if (!ativoSelect) {
+if (
+    !state.chart ||
+    !chartElement
+) {
     return;
 }
 
 
-const ativo =
-    ativoSelect.value;
+state.chart.resize(
 
+    Math.max(
+        chartElement.clientWidth,
+        300
+    ),
 
-const texto =
-    ativoSelect.options[
-        ativoSelect.selectedIndex
-    ].textContent;
-
-
-if (infoAtivo) {
-
-    infoAtivo.textContent =
-        texto;
+    Math.max(
+        chartElement.clientHeight,
+        350
+    )
+);
+```
 
 }
 
+/* =========================================================
+BUSCAR CANDLES
+========================================================= */
+
+async function fetchCandles() {
+
+
+const url =
+    `${BINANCE_API}?symbol=${state.symbol}&interval=${state.interval}&limit=${CANDLE_LIMIT}`;
+
 
 console.log(
-    "Ativo selecionado:",
-    ativo
+    "Buscando:",
+    url
 );
-```
+
+
+const response =
+    await fetch(url);
+
+
+if (!response.ok) {
+
+    const errorText =
+        await response.text();
+
+
+    throw new Error(
+        `Binance respondeu ${response.status}: ${errorText}`
+    );
+}
+
+
+const data =
+    await response.json();
+
+
+if (
+    !Array.isArray(data) ||
+    data.length === 0
+) {
+
+    throw new Error(
+        "A API não retornou candles."
+    );
+}
+
+
+return data.map(
+    candle => ({
+
+        time:
+            Math.floor(
+                Number(candle[0]) / 1000
+            ),
+
+        open:
+            Number(candle[1]),
+
+        high:
+            Number(candle[2]),
+
+        low:
+            Number(candle[3]),
+
+        close:
+            Number(candle[4]),
+
+        volume:
+            Number(candle[5])
+    })
+);
+
+
+}
+
+/* =========================================================
+CARREGAR MERCADO
+========================================================= */
+
+async function loadMarketData() {
+
+
+if (state.loading) {
+    return;
+}
+
+
+state.loading = true;
+
+
+setLoadingState(
+    true
+);
+
+
+try {
+
+    console.log(
+        "Carregando mercado..."
+    );
+
+
+    const candles =
+        await fetchCandles();
+
+
+    state.candles =
+        candles;
+
+
+    console.log(
+        `${candles.length} candles recebidos.`
+    );
+
+
+    updateChart();
+
+
+    updateMarketSummary();
+
+
+    runAnalysis();
+
+
+}
+
+catch (error) {
+
+    console.error(
+        "ERRO NO MERCADO:",
+        error
+    );
+
+
+    showError(
+        error.message
+    );
+
+}
+
+finally {
+
+    state.loading = false;
+
+    setLoadingState(
+        false
+    );
+}
+
+
+}
+
+/* =========================================================
+ATUALIZAR GRÁFICO
+========================================================= */
+
+function updateChart() {
+
+
+if (
+    !state.candleSeries ||
+    !state.volumeSeries
+) {
+
+    console.error(
+        "Séries do gráfico não foram criadas."
+    );
+
+    return;
+}
+
+
+const candles =
+    state.candles;
+
+
+const candleData =
+    candles.map(
+        candle => ({
+
+            time:
+                candle.time,
+
+            open:
+                candle.open,
+
+            high:
+                candle.high,
+
+            low:
+                candle.low,
+
+            close:
+                candle.close
+        })
+    );
+
+
+const volumeData =
+    candles.map(
+        candle => ({
+
+            time:
+                candle.time,
+
+            value:
+                candle.volume,
+
+            color:
+                candle.close >= candle.open
+                    ? "rgba(34,197,94,0.35)"
+                    : "rgba(239,68,68,0.35)"
+        })
+    );
+
+
+state.candleSeries.setData(
+    candleData
+);
+
+
+state.volumeSeries.setData(
+    volumeData
+);
+
+
+state.chart
+    .timeScale()
+    .fitContent();
+
+
+console.log(
+    "Gráfico atualizado."
+);
+
+
+}
+
+/* =========================================================
+RESUMO DO MERCADO
+========================================================= */
+
+function updateMarketSummary() {
+
+
+if (
+    state.candles.length < 2
+) {
+    return;
+}
+
+
+const first =
+    state.candles[0];
+
+
+const last =
+    state.candles[
+        state.candles.length - 1
+    ];
+
+
+const price =
+    last.close;
+
+
+const variation =
+    (
+        (price - first.close) /
+        first.close
+    ) * 100;
+
+
+if (summaryAsset) {
+
+    summaryAsset.textContent =
+        formatSymbol(
+            state.symbol
+        );
+}
+
+
+if (currentPrice) {
+
+    currentPrice.textContent =
+        formatPrice(
+            price
+        );
+}
+
+
+if (priceChange) {
+
+    priceChange.textContent =
+        `${variation >= 0 ? "+" : ""}${variation.toFixed(2)}%`;
+
+
+    priceChange.classList.remove(
+        "signal-buy",
+        "signal-sell"
+    );
+
+
+    if (variation > 0) {
+
+        priceChange.classList.add(
+            "signal-buy"
+        );
+
+    }
+
+    else if (variation < 0) {
+
+        priceChange.classList.add(
+            "signal-sell"
+        );
+    }
+}
+
+
+}
+
+/* =========================================================
+TEXTOS
+========================================================= */
+
+function updateInterfaceTexts() {
+
+
+const symbol =
+    formatSymbol(
+        state.symbol
+    );
+
+
+if (summaryAsset) {
+
+    summaryAsset.textContent =
+        symbol;
+}
+
+
+if (chartTitle) {
+
+    chartTitle.textContent =
+        symbol;
+}
+
+
+if (chartSubtitle) {
+
+    chartSubtitle.textContent =
+        `Gráfico de ${symbol} — ${formatTimeframe(state.interval)}`;
+}
+
+
+}
+
+/* =========================================================
+ANÁLISE
+========================================================= */
+
+function runAnalysis() {
+
+
+if (
+    state.candles.length < 50
+) {
+
+    console.warn(
+        "Dados insuficientes."
+    );
+
+    return;
+}
+
+
+const result =
+    analyzeMarket(
+        state.candles
+    );
+
+
+if (!result) {
+    return;
+}
+
+
+state.analysis =
+    result;
+
+
+console.log(
+    "ANÁLISE:",
+    result
+);
+
+
+updateRSI(
+    result.rsi
+);
+
+
+updateMACD(
+    result.macd
+);
+
+
+updateEMA(
+    result.trend
+);
+
+
+updateVolume(
+    result.volume
+);
+
+
+updateAnalysis(
+    result
+);
+
+
+updateSignal(
+    result
+);
+
+
+updateMarketSignal(
+    result.signal
+);
+
+
+}
+
+/* =========================================================
+RSI
+========================================================= */
+
+function updateRSI(rsi) {
+
+
+if (!rsi) {
+    return;
+}
+
+
+const value =
+    rsi.value;
+
+
+if (rsiValue) {
+
+    rsiValue.textContent =
+        value === null
+            ? "--"
+            : value.toFixed(2);
+}
+
+
+if (
+    rsiBar &&
+    value !== null
+) {
+
+    const percent =
+        Math.max(
+            0,
+            Math.min(
+                100,
+                value
+            )
+        );
+
+
+    rsiBar.style.width =
+        `${percent}%`;
+}
+
+
+}
+
+/* =========================================================
+MACD
+========================================================= */
+
+function updateMACD(macd) {
+
+
+if (!macd) {
+    return;
+}
+
+
+if (macdSignal) {
+
+    macdSignal.textContent =
+        macd.direction;
+}
+
+
+if (macdStatus) {
+
+    macdStatus.textContent =
+        `MACD ${formatIndicatorValue(
+            macd.macd,
+            4
+        )} • Histograma ${formatIndicatorValue(
+            macd.histogram,
+            4
+        )}`;
+
+
+    macdStatus.className =
+        getStatusClass(
+            macd.direction
+        );
+}
+
+
+}
+
+/* =========================================================
+EMA
+========================================================= */
+
+function updateEMA(trend) {
+
+
+if (!trend) {
+    return;
+}
+
+
+if (emaSignal) {
+
+    emaSignal.textContent =
+        trend.direction;
+}
+
+
+if (emaStatus) {
+
+    emaStatus.textContent =
+        `EMA 9: ${formatIndicatorValue(
+            trend.ema9,
+            2
+        )} • EMA 21: ${formatIndicatorValue(
+            trend.ema21,
+            2
+        )}`;
+
+
+    emaStatus.className =
+        getStatusClass(
+            trend.direction
+        );
+}
+
+
+}
+
+/* =========================================================
+VOLUME
+========================================================= */
+
+function updateVolume(volume) {
+
+
+if (!volume) {
+    return;
+}
+
+
+if (volumeValue) {
+
+    volumeValue.textContent =
+        volume.status;
+}
+
+
+if (volumeStatus) {
+
+    volumeStatus.textContent =
+        `Volume ${volume.ratio}x da média`;
+
+
+    volumeStatus.className =
+        getStatusClass(
+            volume.status
+        );
+}
+
+
+}
+
+/* =========================================================
+PAINEL DE ANÁLISE
+========================================================= */
+
+function updateAnalysis(result) {
+
+
+if (analysisTitle) {
+
+    if (
+        result.signal === "COMPRA"
+    ) {
+
+        analysisTitle.textContent =
+            "Pressão compradora";
+
+    }
+
+    else if (
+        result.signal === "VENDA"
+    ) {
+
+        analysisTitle.textContent =
+            "Pressão vendedora";
+
+    }
+
+    else {
+
+        analysisTitle.textContent =
+            "Mercado sem confirmação";
+    }
+}
+
+
+if (analysisBadge) {
+
+    analysisBadge.textContent =
+        result.signal;
+
+
+    analysisBadge.className =
+        `analysis-badge ${getSignalClass(
+            result.signal
+        )}`;
+}
+
+
+if (analysisText) {
+
+    analysisText.textContent =
+        buildAnalysisText(
+            result
+        );
+}
+
+
+if (trendValue) {
+
+    trendValue.textContent =
+        result.trend
+            ? result.trend.direction
+            : "--";
+}
+
+
+if (momentumValue) {
+
+    momentumValue.textContent =
+        result.momentum
+            ? `${result.momentum.direction} (${result.momentum.value}%)`
+            : "--";
+}
+
+
+if (volatilityValue) {
+
+    volatilityValue.textContent =
+        result.volatility
+            ? `${result.volatility.level} (${result.volatility.value}%)`
+            : "--";
+}
+
+
+if (confidenceValue) {
+
+    confidenceValue.textContent =
+        `${result.confidence}%`;
+}
+
+
+}
+
+/* =========================================================
+TEXTO DA ANÁLISE
+========================================================= */
+
+function buildAnalysisText(result) {
+
+
+const parts = [];
+
+
+if (result.trend) {
+
+    parts.push(
+        `tendência ${result.trend.direction.toLowerCase()}`
+    );
+}
+
+
+if (result.momentum) {
+
+    parts.push(
+        `momentum ${result.momentum.direction.toLowerCase()}`
+    );
+}
+
+
+if (
+    result.rsi &&
+    result.rsi.value !== null
+) {
+
+    parts.push(
+        `RSI em ${result.rsi.value.toFixed(2)}`
+    );
+}
+
+
+if (result.macd) {
+
+    parts.push(
+        `MACD ${result.macd.direction.toLowerCase()}`
+    );
+}
+
+
+let conclusion =
+    "Não há confirmação suficiente para uma direção clara.";
+
+
+if (
+    result.signal === "COMPRA"
+) {
+
+    conclusion =
+        "Os indicadores apresentam predominância compradora.";
+
+}
+
+else if (
+    result.signal === "VENDA"
+) {
+
+    conclusion =
+        "Os indicadores apresentam predominância vendedora.";
+}
+
+
+return (
+    "A análise apresenta " +
+    parts.join(", ") +
+    ". " +
+    conclusion
+);
+
+
+}
+
+/* =========================================================
+SINAL
+========================================================= */
+
+function updateSignal(result) {
+
+
+const signal =
+    result.signal;
+
+
+if (!signalCard) {
+    return;
+}
+
+
+signalCard.className =
+    `signal-card ${getSignalClass(
+        signal
+    )}`;
+
+
+if (
+    signal === "COMPRA"
+) {
+
+    signalTitle.textContent =
+        "COMPRA";
+
+
+    signalDescription.textContent =
+        "Os indicadores apresentam predominância de força compradora.";
+
+}
+
+else if (
+    signal === "VENDA"
+) {
+
+    signalTitle.textContent =
+        "VENDA";
+
+
+    signalDescription.textContent =
+        "Os indicadores apresentam predominância de força vendedora.";
+
+}
+
+else {
+
+    signalTitle.textContent =
+        "NEUTRO";
+
+
+    signalDescription.textContent =
+        "Não existe confirmação suficiente para uma direção clara.";
+}
+
+
+signalConfidence.textContent =
+    `${result.confidence}%`;
+
+
+const icon =
+    signalCard.querySelector(
+        ".signal-icon"
+    );
+
+
+if (icon) {
+
+    if (
+        signal === "COMPRA"
+    ) {
+
+        icon.textContent =
+            "↑";
+
+    }
+
+    else if (
+        signal === "VENDA"
+    ) {
+
+        icon.textContent =
+            "↓";
+
+    }
+
+    else {
+
+        icon.textContent =
+            "—";
+    }
+}
+
+
+}
+
+/* =========================================================
+SINAL DO RESUMO
+========================================================= */
+
+function updateMarketSignal(
+signal
+) {
+
+
+if (!marketSignal) {
+    return;
+}
+
+
+marketSignal.textContent =
+    signal;
+
+
+marketSignal.classList.remove(
+    "signal-neutral",
+    "signal-buy",
+    "signal-sell"
+);
+
+
+if (
+    signal === "COMPRA"
+) {
+
+    marketSignal.classList.add(
+        "signal-buy"
+    );
+
+}
+
+else if (
+    signal === "VENDA"
+) {
+
+    marketSignal.classList.add(
+        "signal-sell"
+    );
+
+}
+
+else {
+
+    marketSignal.classList.add(
+        "signal-neutral"
+    );
+}
+
 
 }
 
@@ -354,1995 +1579,53 @@ console.log(
 TIMEFRAME
 ========================================================= */
 
-function atualizarTimeframe() {
+function updateTimeButtons() {
 
-```
-if (!timeframeSelect) {
-    return;
+
+const buttons =
+    document.querySelectorAll(
+        ".time-button"
+    );
+
+
+buttons.forEach(
+    button => {
+
+        button.classList.toggle(
+            "active",
+            button.dataset.timeframe ===
+                state.interval
+        );
+    }
+);
+
+
 }
 
+/* =========================================================
+ATUALIZAÇÃO AUTOMÁTICA
+========================================================= */
 
-const timeframe =
-    timeframeSelect.value;
-
-
-if (timeframeAtual) {
-
-    timeframeAtual.textContent =
-        timeframe.toUpperCase();
-
-}
+function startAutoUpdate() {
 
 
 console.log(
-    "Timeframe:",
-    timeframe
-);
-```
-
-}
-
-/* =========================================================
-EXECUTAR ANÁLISE
-========================================================= */
-
-async function executarAnalise() {
-
-```
-try {
-
-    bloquearBotao(
-        true
-    );
-
-
-    if (graficoStatus) {
-
-        graficoStatus.textContent =
-            "Gerando dados para análise...";
-
-    }
-
-
-    /*
-       Pequena pausa visual
-       para deixar a interface
-       mais natural.
-    */
-
-    await esperar(350);
-
-
-    const quantidade =
-        Number(
-            periodoSelect.value
-        ) || 100;
-
-
-    const ativo =
-        ativoSelect.value;
-
-
-    const timeframe =
-        timeframeSelect.value;
-
-
-    /*
-       Gera candles simulados.
-    */
-
-    candlesAtuais =
-        gerarCandlesSimulados(
-            quantidade,
-            ativo,
-            timeframe
-        );
-
-
-    /*
-       Analisa os candles.
-    */
-
-    const resultado =
-        window.TradeIndicators.analisarMercado(
-            candlesAtuais
-        );
-
-
-    if (!resultado.sucesso) {
-
-        throw new Error(
-            resultado.erro
-        );
-
-    }
-
-
-    ultimaAnalise =
-        resultado;
-
-
-    /*
-       Atualiza todas as partes
-       da interface.
-    */
-
-    atualizarInformacoes(
-        resultado
-    );
-
-    atualizarIndicadores(
-        resultado
-    );
-
-    atualizarResultado(
-        resultado
-    );
-
-    atualizarNiveis(
-        resultado
-    );
-
-    desenharGrafico(
-        candlesAtuais,
-        resultado
-    );
-
-
-    /*
-       Adiciona ao histórico.
-    */
-
-    adicionarHistorico(
-        resultado
-    );
-
-
-    if (graficoStatus) {
-
-        graficoStatus.textContent =
-            "Análise concluída";
-
-    }
-
-
-    console.log(
-        "Resultado da análise:",
-        resultado
-    );
-
-
-} catch (erro) {
-
-    console.error(
-        "Erro na análise:",
-        erro
-    );
-
-
-    alert(
-        "Não foi possível realizar a análise.\n\n" +
-        erro.message
-    );
-
-
-    if (graficoStatus) {
-
-        graficoStatus.textContent =
-            "Erro na análise";
-
-    }
-
-} finally {
-
-    bloquearBotao(
-        false
-    );
-
-}
-```
-
-}
-
-/* =========================================================
-GERADOR DE CANDLES SIMULADOS
-========================================================= */
-
-function gerarCandlesSimulados(
-quantidade,
-ativo,
-timeframe
-) {
-
-```
-const candles = [];
-
-
-/*
-   Preços iniciais aproximados apenas
-   para deixar a simulação visual.
-*/
-
-const precosBase = {
-
-    BTCUSDT:
-        105000,
-
-    ETHUSDT:
-        2500,
-
-    BNBUSDT:
-        650,
-
-    SOLUSDT:
-        180,
-
-    XRPUSDT:
-        2.2
-
-};
-
-
-let preco =
-    precosBase[ativo] ||
-    100;
-
-
-/*
-   Cada ativo recebe uma volatilidade
-   diferente.
-*/
-
-const volatilidades = {
-
-    BTCUSDT:
-        0.0025,
-
-    ETHUSDT:
-        0.004,
-
-    BNBUSDT:
-        0.0045,
-
-    SOLUSDT:
-        0.006,
-
-    XRPUSDT:
-        0.008
-
-};
-
-
-const volatilidade =
-    volatilidades[ativo] ||
-    0.005;
-
-
-/*
-   Determina uma tendência artificial.
-
-   Isso é SOMENTE para teste.
-*/
-
-const tendenciaAleatoria =
-    Math.random();
-
-
-let tendencia;
-
-
-if (tendenciaAleatoria < 0.33) {
-
-    tendencia = -1;
-
-} else if (tendenciaAleatoria > 0.66) {
-
-    tendencia = 1;
-
-} else {
-
-    tendencia = 0;
-
-}
-
-
-/*
-   Timestamp inicial.
-*/
-
-const agora =
-    Date.now();
-
-
-const intervalo =
-    obterMilissegundosTimeframe(
-        timeframe
-    );
-
-
-for (
-    let i = 0;
-    i < quantidade;
-    i++
-) {
-
-    const abertura =
-        preco;
-
-
-    /*
-       Movimento aleatório.
-    */
-
-    const ruido =
-        (
-            Math.random() -
-            0.5
-        ) * 2;
-
-
-    /*
-       Pequena tendência.
-    */
-
-    const movimentoTendencia =
-        tendencia *
-        volatilidade *
-        0.35;
-
-
-    const movimento =
-        (
-            ruido *
-            volatilidade
-        ) +
-        movimentoTendencia;
-
-
-    let fechamento =
-        abertura *
-        (
-            1 +
-            movimento
-        );
-
-
-    /*
-       Evita preço negativo.
-    */
-
-    if (fechamento <= 0) {
-
-        fechamento =
-            abertura;
-
-    }
-
-
-    const variacaoMaxima =
-        Math.abs(
-            fechamento -
-            abertura
-        );
-
-
-    const margem =
-        Math.max(
-            variacaoMaxima,
-            abertura *
-            volatilidade *
-            0.5
-        );
-
-
-    const high =
-        Math.max(
-            abertura,
-            fechamento
-        ) +
-        (
-            Math.random() *
-            margem *
-            0.5
-        );
-
-
-    const low =
-        Math.min(
-            abertura,
-            fechamento
-        ) -
-        (
-            Math.random() *
-            margem *
-            0.5
-        );
-
-
-    /*
-       Volume artificial.
-    */
-
-    const volumeBase =
-        100000 +
-        (
-            Math.random() *
-            900000
-        );
-
-
-    const volume =
-        volumeBase *
-        (
-            1 +
-            (
-                Math.random() *
-                1.5
-            )
-        );
-
-
-    candles.push({
-
-        time:
-            agora -
-            (
-                (quantidade - i) *
-                intervalo
-            ),
-
-        open:
-            abertura,
-
-        high:
-            high,
-
-        low:
-            Math.max(
-                low,
-                0
-            ),
-
-        close:
-            fechamento,
-
-        volume:
-            volume
-
-    });
-
-
-    preco =
-        fechamento;
-
-}
-
-
-return candles;
-```
-
-}
-
-/* =========================================================
-TIMEFRAME EM MILISSEGUNDOS
-========================================================= */
-
-function obterMilissegundosTimeframe(
-timeframe
-) {
-
-```
-const valores = {
-
-    "1m":
-        60 * 1000,
-
-    "5m":
-        5 * 60 * 1000,
-
-    "15m":
-        15 * 60 * 1000,
-
-    "30m":
-        30 * 60 * 1000,
-
-    "1h":
-        60 * 60 * 1000,
-
-    "4h":
-        4 * 60 * 60 * 1000,
-
-    "1d":
-        24 * 60 * 60 * 1000
-
-};
-
-
-return valores[timeframe] ||
-    5 * 60 * 1000;
-```
-
-}
-
-/* =========================================================
-ATUALIZAR INFORMAÇÕES
-========================================================= */
-
-function atualizarInformacoes(
-resultado
-) {
-
-```
-const preco =
-    resultado.preco;
-
-
-const candles =
-    candlesAtuais;
-
-
-/*
-   Variação do primeiro candle
-   até o último.
-*/
-
-const primeiro =
-    candles[0]?.open ||
-    preco;
-
-
-const variacao =
-    primeiro !== 0
-        ? (
-            (
-                preco -
-                primeiro
-            ) /
-            primeiro
-        ) * 100
-        : 0;
-
-
-const volume =
-    resultado.indicadores.volume.atual;
-
-
-if (precoAtual) {
-
-    precoAtual.textContent =
-        formatarPreco(preco);
-
-}
-
-
-if (variacaoAtual) {
-
-    variacaoAtual.textContent =
-        `${variacao >= 0 ? "+" : ""}${variacao.toFixed(2)}%`;
-
-
-    variacaoAtual.style.color =
-        variacao >= 0
-            ? "#19d68b"
-            : "#ff5364";
-
-}
-
-
-if (volumeAtual) {
-
-    volumeAtual.textContent =
-        formatarNumeroGrande(
-            volume
-        );
-
-}
-```
-
-}
-
-/* =========================================================
-ATUALIZAR INDICADORES
-========================================================= */
-
-function atualizarIndicadores(
-resultado
-) {
-
-```
-const indicadores =
-    resultado.indicadores;
-
-
-/* =====================================================
-   RSI
-===================================================== */
-
-if (rsiValor) {
-
-    rsiValor.textContent =
-        Number.isFinite(
-            indicadores.rsi.valor
-        )
-            ? indicadores.rsi.valor.toFixed(2)
-            : "--";
-
-}
-
-
-if (rsiBarra) {
-
-    const valorRSI =
-        Math.max(
-            0,
-            Math.min(
-                100,
-                indicadores.rsi.valor || 0
-            )
-        );
-
-
-    rsiBarra.style.width =
-        `${valorRSI}%`;
-
-}
-
-
-atualizarSinalElemento(
-    rsiSinal,
-    indicadores.rsi.sinal
+    "Atualização automática ativada."
 );
 
 
-/* =====================================================
-   MACD
-===================================================== */
+setInterval(
+    async () => {
 
-if (macdValor) {
+        if (!state.loading) {
 
-    macdValor.textContent =
-        formatarDecimal(
-            indicadores.macd.valor,
-            4
-        );
-
-}
-
-
-atualizarSinalElemento(
-    macdSinal,
-    indicadores.macd.direcao
-);
-
-
-/* =====================================================
-   EMA
-===================================================== */
-
-if (emaValor) {
-
-    emaValor.textContent =
-        `${formatarPreco(
-            indicadores.tendencia.ema9
-        )} / ${formatarPreco(
-            indicadores.tendencia.ema21
-        )}`;
-
-}
-
-
-atualizarSinalElemento(
-    emaSinal,
-    indicadores.tendencia.tendencia
-);
-
-
-/* =====================================================
-   VOLUME
-===================================================== */
-
-if (volumeIndicador) {
-
-    const percentual =
-        indicadores.volume.percentual;
-
-
-    volumeIndicador.textContent =
-        `${percentual >= 0 ? "+" : ""}${percentual.toFixed(1)}%`;
-
-}
-
-
-if (volumeSinal) {
-
-    if (
-        indicadores.volume.sinal ===
-        "FORTE"
-    ) {
-
-        atualizarSinalElemento(
-            volumeSinal,
-            "FORTE"
-        );
-
-    } else {
-
-        volumeSinal.className =
-            "sinal neutro";
-
-        volumeSinal.textContent =
-            "NORMAL";
-    }
-
-}
-
-
-/* =====================================================
-   BOLLINGER
-===================================================== */
-
-if (bollingerValor) {
-
-    bollingerValor.textContent =
-        formatarPreco(
-            indicadores.bollinger.media
-        );
-
-}
-
-
-atualizarSinalElemento(
-    bollingerSinal,
-    indicadores.bollinger.sinal
-);
-
-
-/* =====================================================
-   TENDÊNCIA
-===================================================== */
-
-if (tendenciaValor) {
-
-    tendenciaValor.textContent =
-        indicadores.tendencia.forca +
-        "%";
-
-}
-
-
-atualizarSinalElemento(
-    tendenciaSinal,
-    indicadores.tendencia.tendencia
-);
-```
-
-}
-
-/* =========================================================
-ATUALIZAR CLASSE DOS SINAIS
-========================================================= */
-
-function atualizarSinalElemento(
-elemento,
-sinal
-) {
-
-```
-if (!elemento) {
-    return;
-}
-
-
-elemento.className =
-    "sinal";
-
-
-if (
-    sinal === "ALTA" ||
-    sinal === "COMPRA"
-) {
-
-    elemento.classList.add(
-        "alta"
-    );
-
-
-    elemento.textContent =
-        sinal;
-
-    return;
-}
-
-
-if (
-    sinal === "BAIXA" ||
-    sinal === "VENDA"
-) {
-
-    elemento.classList.add(
-        "baixa"
-    );
-
-
-    elemento.textContent =
-        sinal;
-
-    return;
-}
-
-
-if (
-    sinal === "FORTE"
-) {
-
-    elemento.classList.add(
-        "alta"
-    );
-
-
-    elemento.textContent =
-        "FORTE";
-
-    return;
-}
-
-
-elemento.classList.add(
-    "neutro"
-);
-
-
-elemento.textContent =
-    sinal || "NEUTRO";
-```
-
-}
-
-/* =========================================================
-ATUALIZAR RESULTADO
-========================================================= */
-
-function atualizarResultado(
-resultado
-) {
-
-```
-const pontuacao =
-    resultado.pontuacao;
-
-
-const sinal =
-    pontuacao.sinal;
-
-
-const confianca =
-    pontuacao.confianca;
-
-
-/*
-   Sinal principal.
-*/
-
-if (sinalPrincipal) {
-
-    sinalPrincipal.className =
-        "";
-
-
-    if (
-        sinal === "COMPRA"
-    ) {
-
-        sinalPrincipal.classList.add(
-            "alta"
-        );
-
-
-        sinalPrincipal.textContent =
-            "📈 COMPRA";
-
-    } else if (
-        sinal === "VENDA"
-    ) {
-
-        sinalPrincipal.classList.add(
-            "baixa"
-        );
-
-
-        sinalPrincipal.textContent =
-            "📉 VENDA";
-
-    } else {
-
-        sinalPrincipal.classList.add(
-            "neutro"
-        );
-
-
-        sinalPrincipal.textContent =
-            "⏸ AGUARDAR";
-    }
-
-}
-
-
-/*
-   Confiança.
-*/
-
-if (confiancaValor) {
-
-    confiancaValor.textContent =
-        `${confianca.toFixed(1)}%`;
-
-}
-
-
-if (barraConfianca) {
-
-    barraConfianca.style.width =
-        `${Math.min(
-            confianca,
-            100
-        )}%`;
-
-
-    /*
-       Cor visual baseada no sinal.
-    */
-
-    if (sinal === "COMPRA") {
-
-        barraConfianca.style.background =
-            "#19d68b";
-
-    } else if (
-        sinal === "VENDA"
-    ) {
-
-        barraConfianca.style.background =
-            "#ff5364";
-
-    } else {
-
-        barraConfianca.style.background =
-            "#f4c95d";
-
-    }
-
-}
-
-
-/*
-   Pontuação.
-*/
-
-if (pontosAlta) {
-
-    pontosAlta.textContent =
-        pontuacao.pontosAlta;
-
-    pontosAlta.style.color =
-        "#19d68b";
-
-}
-
-
-if (pontosBaixa) {
-
-    pontosBaixa.textContent =
-        pontuacao.pontosBaixa;
-
-    pontosBaixa.style.color =
-        "#ff5364";
-
-}
-
-
-/*
-   Força do sinal.
-*/
-
-if (forcaSinal) {
-
-    if (confianca >= 75) {
-
-        forcaSinal.textContent =
-            "FORTE";
-
-    } else if (
-        confianca >= 60
-    ) {
-
-        forcaSinal.textContent =
-            "MODERADO";
-
-    } else if (
-        confianca >= 50
-    ) {
-
-        forcaSinal.textContent =
-            "FRACO";
-
-    } else {
-
-        forcaSinal.textContent =
-            "MUITO FRACO";
-    }
-
-}
-```
-
-}
-
-/* =========================================================
-ATUALIZAR NÍVEIS
-========================================================= */
-
-function atualizarNiveis(
-resultado
-) {
-
-```
-const niveis =
-    resultado.niveis;
-
-
-if (nivelEntrada) {
-
-    nivelEntrada.textContent =
-        formatarPreco(
-            niveis.entrada
-        );
-
-}
-
-
-if (nivelStop) {
-
-    nivelStop.textContent =
-        formatarPreco(
-            niveis.stop
-        );
-
-}
-
-
-if (nivelAlvo) {
-
-    nivelAlvo.textContent =
-        formatarPreco(
-            niveis.alvo
-        );
-
-}
-```
-
-}
-
-/* =========================================================
-DESENHAR GRÁFICO
-========================================================= */
-
-function desenharGrafico(
-candles,
-resultado
-) {
-
-```
-if (!grafico) {
-    return;
-}
-
-
-/*
-   Aqui ainda não usamos uma biblioteca externa.
-
-   Criamos um gráfico simples usando
-   HTML + SVG.
-
-   Posteriormente podemos substituir
-   por um gráfico profissional de candles.
-*/
-
-
-const largura =
-    grafico.clientWidth ||
-    900;
-
-
-const altura =
-    460;
-
-
-const margem =
-    35;
-
-
-const precos =
-    candles.flatMap(
-        candle => [
-            candle.high,
-            candle.low
-        ]
-    );
-
-
-const maximo =
-    Math.max(
-        ...precos
-    );
-
-
-const minimo =
-    Math.min(
-        ...precos
-    );
-
-
-const intervalo =
-    maximo -
-    minimo ||
-    1;
-
-
-const quantidade =
-    candles.length;
-
-
-const espaco =
-    (
-        largura -
-        margem * 2
-    ) /
-    quantidade;
-
-
-let svg =
-    `
-    <svg
-        width="100%"
-        height="${altura}"
-        viewBox="0 0 ${largura} ${altura}"
-        preserveAspectRatio="none"
-        xmlns="http://www.w3.org/2000/svg"
-    >
-    `;
-
-
-/*
-   Linhas horizontais.
-*/
-
-for (
-    let i = 0;
-    i <= 5;
-    i++
-) {
-
-    const y =
-        margem +
-        (
-            (altura -
-            margem * 2) *
-            (i / 5)
-        );
-
-
-    const precoLinha =
-        maximo -
-        (
-            intervalo *
-            (i / 5)
-        );
-
-
-    svg +=
-        `
-        <line
-            x1="${margem}"
-            y1="${y}"
-            x2="${largura - margem}"
-            y2="${y}"
-            stroke="rgba(255,255,255,0.06)"
-            stroke-width="1"
-        />
-
-        <text
-            x="${largura - margem + 3}"
-            y="${y + 3}"
-            fill="#718096"
-            font-size="9"
-        >
-            ${formatarPreco(precoLinha)}
-        </text>
-        `;
-}
-
-
-/*
-   Desenha candles.
-
-   Para não sobrecarregar o navegador,
-   mostramos no máximo 120 candles.
-*/
-
-const candlesVisiveis =
-    candles.slice(-120);
-
-
-const espacoVisual =
-    (
-        largura -
-        margem * 2
-    ) /
-    candlesVisiveis.length;
-
-
-candlesVisiveis.forEach(
-    (candle, index) => {
-
-        const x =
-            margem +
-            (
-                index *
-                espacoVisual
-            );
-
-
-        const centro =
-            x +
-            (
-                espacoVisual /
-                2
-            );
-
-
-        const yHigh =
-            converterPrecoY(
-                candle.high,
-                minimo,
-                intervalo,
-                altura,
-                margem
-            );
-
-
-        const yLow =
-            converterPrecoY(
-                candle.low,
-                minimo,
-                intervalo,
-                altura,
-                margem
-            );
-
-
-        const yOpen =
-            converterPrecoY(
-                candle.open,
-                minimo,
-                intervalo,
-                altura,
-                margem
-            );
-
-
-        const yClose =
-            converterPrecoY(
-                candle.close,
-                minimo,
-                intervalo,
-                altura,
-                margem
-            );
-
-
-        const alta =
-            candle.close >=
-            candle.open;
-
-
-        const corpoTopo =
-            Math.min(
-                yOpen,
-                yClose
-            );
-
-
-        const corpoAltura =
-            Math.max(
-                1,
-                Math.abs(
-                    yClose -
-                    yOpen
-                )
-            );
-
-
-        const larguraCandle =
-            Math.max(
-                2,
-                Math.min(
-                    7,
-                    espacoVisual * 0.65
-                )
-            );
-
-
-        const cor =
-            alta
-                ? "#19d68b"
-                : "#ff5364";
-
-
-        /*
-           Pavio.
-        */
-
-        svg +=
-            `
-            <line
-                x1="${centro}"
-                y1="${yHigh}"
-                x2="${centro}"
-                y2="${yLow}"
-                stroke="${cor}"
-                stroke-width="1"
-            />
-            `;
-
-
-        /*
-           Corpo.
-        */
-
-        svg +=
-            `
-            <rect
-                x="${centro - larguraCandle / 2}"
-                y="${corpoTopo}"
-                width="${larguraCandle}"
-                height="${corpoAltura}"
-                fill="${cor}"
-                rx="1"
-            />
-            `;
-
-    }
-);
-
-
-/*
-   Linha de entrada.
-*/
-
-if (
-    resultado &&
-    resultado.niveis &&
-    Number.isFinite(
-        resultado.niveis.entrada
-    )
-) {
-
-    const yEntrada =
-        converterPrecoY(
-            resultado.niveis.entrada,
-            minimo,
-            intervalo,
-            altura,
-            margem
-        );
-
-
-    svg +=
-        `
-        <line
-            x1="${margem}"
-            y1="${yEntrada}"
-            x2="${largura - margem}"
-            y2="${yEntrada}"
-            stroke="#4da3ff"
-            stroke-width="1.5"
-            stroke-dasharray="6 4"
-        />
-
-        <text
-            x="${margem + 5}"
-            y="${yEntrada - 5}"
-            fill="#4da3ff"
-            font-size="10"
-            font-weight="bold"
-        >
-            ENTRADA
-        </text>
-        `;
-}
-
-
-/*
-   Linha de Stop.
-*/
-
-if (
-    resultado &&
-    resultado.niveis &&
-    Number.isFinite(
-        resultado.niveis.stop
-    )
-) {
-
-    const yStop =
-        converterPrecoY(
-            resultado.niveis.stop,
-            minimo,
-            intervalo,
-            altura,
-            margem
-        );
-
-
-    svg +=
-        `
-        <line
-            x1="${margem}"
-            y1="${yStop}"
-            x2="${largura - margem}"
-            y2="${yStop}"
-            stroke="#ff5364"
-            stroke-width="1"
-            stroke-dasharray="4 4"
-        />
-
-        <text
-            x="${margem + 5}"
-            y="${yStop - 5}"
-            fill="#ff5364"
-            font-size="9"
-        >
-            STOP
-        </text>
-        `;
-}
-
-
-/*
-   Linha de alvo.
-*/
-
-if (
-    resultado &&
-    resultado.niveis &&
-    Number.isFinite(
-        resultado.niveis.alvo
-    )
-) {
-
-    const yAlvo =
-        converterPrecoY(
-            resultado.niveis.alvo,
-            minimo,
-            intervalo,
-            altura,
-            margem
-        );
-
-
-    svg +=
-        `
-        <line
-            x1="${margem}"
-            y1="${yAlvo}"
-            x2="${largura - margem}"
-            y2="${yAlvo}"
-            stroke="#19d68b"
-            stroke-width="1"
-            stroke-dasharray="4 4"
-        />
-
-        <text
-            x="${margem + 5}"
-            y="${yAlvo - 5}"
-            fill="#19d68b"
-            font-size="9"
-        >
-            ALVO
-        </text>
-        `;
-}
-
-
-svg +=
-    "</svg>";
-
-
-grafico.innerHTML =
-    svg;
-```
-
-}
-
-/* =========================================================
-CONVERTER PREÇO PARA Y
-========================================================= */
-
-function converterPrecoY(
-preco,
-minimo,
-intervalo,
-altura,
-margem
-) {
-
-```
-const alturaUtil =
-    altura -
-    margem * 2;
-
-
-const proporcao =
-    (
-        preco -
-        minimo
-    ) /
-    intervalo;
-
-
-return (
-    altura -
-    margem -
-    (
-        proporcao *
-        alturaUtil
-    )
-);
-```
-
-}
-
-/* =========================================================
-HISTÓRICO
-========================================================= */
-
-function adicionarHistorico(
-resultado
-) {
-
-```
-const historico =
-    obterHistorico();
-
-
-const registro = {
-
-    horario:
-        new Date()
-            .toLocaleTimeString(
-                "pt-BR"
-            ),
-
-    data:
-        new Date()
-            .toLocaleDateString(
-                "pt-BR"
-            ),
-
-    ativo:
-        ativoSelect.value,
-
-    timeframe:
-        timeframeSelect.value,
-
-    preco:
-        resultado.preco,
-
-    sinal:
-        resultado.pontuacao.sinal,
-
-    confianca:
-        resultado.pontuacao.confianca
-
-};
-
-
-historico.unshift(
-    registro
-);
-
-
-/*
-   Limita a quantidade armazenada.
-*/
-
-const limitado =
-    historico.slice(
-        0,
-        CONFIG.maxHistorico
-    );
-
-
-localStorage.setItem(
-
-    CONFIG.historicoStorage,
-
-    JSON.stringify(
-        limitado
-    )
-
-);
-
-
-renderizarHistorico(
-    limitado
-);
-```
-
-}
-
-/* =========================================================
-OBTER HISTÓRICO
-========================================================= */
-
-function obterHistorico() {
-
-```
-try {
-
-    const salvo =
-        localStorage.getItem(
-            CONFIG.historicoStorage
-        );
-
-
-    if (!salvo) {
-
-        return [];
-
-    }
-
-
-    const historico =
-        JSON.parse(
-            salvo
-        );
-
-
-    return Array.isArray(
-        historico
-    )
-        ? historico
-        : [];
-
-
-} catch (erro) {
-
-    console.error(
-        "Erro ao carregar histórico:",
-        erro
-    );
-
-
-    return [];
-
-}
-```
-
-}
-
-/* =========================================================
-CARREGAR HISTÓRICO
-========================================================= */
-
-function carregarHistorico() {
-
-```
-const historico =
-    obterHistorico();
-
-
-renderizarHistorico(
-    historico
-);
-```
-
-}
-
-/* =========================================================
-RENDERIZAR HISTÓRICO
-========================================================= */
-
-function renderizarHistorico(
-historico
-) {
-
-```
-if (!historicoTabela) {
-    return;
-}
-
-
-if (
-    !historico ||
-    historico.length === 0
-) {
-
-    historicoTabela.innerHTML =
-        `
-        <tr>
-            <td colspan="6">
-                Nenhuma análise realizada.
-            </td>
-        </tr>
-        `;
-
-    return;
-}
-
-
-historicoTabela.innerHTML =
-    "";
-
-
-historico.forEach(
-    registro => {
-
-        const tr =
-            document.createElement(
-                "tr"
-            );
-
-
-        let classeSinal =
-            "";
-
-
-        if (
-            registro.sinal ===
-            "COMPRA"
-        ) {
-
-            classeSinal =
-                "alta";
-
-        } else if (
-            registro.sinal ===
-            "VENDA"
-        ) {
-
-            classeSinal =
-                "baixa";
-
+            await loadMarketData();
         }
 
-
-        tr.innerHTML =
-            `
-            <td>
-                ${registro.horario}
-            </td>
-
-            <td>
-                ${registro.ativo}
-            </td>
-
-            <td>
-                ${registro.timeframe.toUpperCase()}
-            </td>
-
-            <td>
-                ${formatarPreco(
-                    registro.preco
-                )}
-            </td>
-
-            <td>
-                <span
-                    class="sinal ${classeSinal}"
-                >
-                    ${registro.sinal}
-                </span>
-            </td>
-
-            <td>
-                ${Number(
-                    registro.confianca
-                ).toFixed(1)}%
-            </td>
-            `;
-
-
-        historicoTabela.appendChild(
-            tr
-        );
-
-    }
-);
-```
-
-}
-
-/* =========================================================
-LIMPAR HISTÓRICO
-========================================================= */
-
-function limparHistorico() {
-
-```
-const confirmar =
-    confirm(
-        "Deseja realmente apagar todo o histórico?"
-    );
-
-
-if (!confirmar) {
-    return;
-}
-
-
-localStorage.removeItem(
-    CONFIG.historicoStorage
+    },
+    UPDATE_INTERVAL
 );
 
-
-renderizarHistorico(
-    []
-);
-
-
-console.log(
-    "Histórico apagado."
-);
-```
-
-}
-
-/* =========================================================
-RESETAR INDICADORES
-========================================================= */
-
-function resetarIndicadores() {
-
-```
-const elementos =
-    [
-
-        rsiValor,
-        macdValor,
-        emaValor,
-        volumeIndicador,
-        bollingerValor,
-        tendenciaValor
-
-    ];
-
-
-elementos.forEach(
-    elemento => {
-
-        if (elemento) {
-
-            elemento.textContent =
-                "--";
-
-        }
-
-    }
-);
-
-
-const sinais =
-    [
-
-        rsiSinal,
-        macdSinal,
-        emaSinal,
-        volumeSinal,
-        bollingerSinal,
-        tendenciaSinal
-
-    ];
-
-
-sinais.forEach(
-    elemento => {
-
-        if (elemento) {
-
-            elemento.className =
-                "sinal neutro";
-
-            elemento.textContent =
-                "AGUARDANDO";
-
-        }
-
-    }
-);
-
-
-if (rsiBarra) {
-
-    rsiBarra.style.width =
-        "0%";
-
-}
-
-
-if (sinalPrincipal) {
-
-    sinalPrincipal.className =
-        "neutro";
-
-    sinalPrincipal.textContent =
-        "AGUARDANDO";
-
-}
-
-
-if (confiancaValor) {
-
-    confiancaValor.textContent =
-        "0%";
-
-}
-
-
-if (barraConfianca) {
-
-    barraConfianca.style.width =
-        "0%";
-
-}
-
-
-if (pontosAlta) {
-
-    pontosAlta.textContent =
-        "0";
-
-}
-
-
-if (pontosBaixa) {
-
-    pontosBaixa.textContent =
-        "0";
-
-}
-
-
-if (forcaSinal) {
-
-    forcaSinal.textContent =
-        "--";
-
-}
-
-
-if (nivelEntrada) {
-
-    nivelEntrada.textContent =
-        "--";
-
-}
-
-
-if (nivelStop) {
-
-    nivelStop.textContent =
-        "--";
-
-}
-
-
-if (nivelAlvo) {
-
-    nivelAlvo.textContent =
-        "--";
-
-}
-```
 
 }
 
@@ -2350,262 +1633,268 @@ if (nivelAlvo) {
 BOTÃO
 ========================================================= */
 
-function bloquearBotao(
-bloqueado
+function setLoadingState(
+loading
 ) {
 
-```
-if (!btnAnalisar) {
+
+if (!analyzeBtn) {
     return;
 }
 
 
-btnAnalisar.disabled =
-    bloqueado;
+analyzeBtn.disabled =
+    loading;
 
 
-if (bloqueado) {
+analyzeBtn.textContent =
+    loading
+        ? "ANALISANDO..."
+        : "ANALISAR";
 
-    btnAnalisar.textContent =
-        "ANALISANDO...";
-
-} else {
-
-    btnAnalisar.textContent =
-        "ANALISAR GRÁFICO";
-
-}
-```
 
 }
 
 /* =========================================================
-FORMATAR PREÇO
+ERRO
 ========================================================= */
 
-function formatarPreco(
-valor
+function showError(
+message
 ) {
 
-```
+
+console.error(
+    "PLANOS:",
+    message
+);
+
+
+if (analysisTitle) {
+
+    analysisTitle.textContent =
+        "Erro ao carregar dados";
+}
+
+
+if (analysisBadge) {
+
+    analysisBadge.textContent =
+        "ERRO";
+
+
+    analysisBadge.className =
+        "analysis-badge sell";
+}
+
+
+if (analysisText) {
+
+    analysisText.textContent =
+        message;
+}
+
+
+}
+
+/* =========================================================
+STATUS
+========================================================= */
+
+function getStatusClass(
+value
+) {
+
+
+const normalized =
+    String(value)
+        .toUpperCase();
+
+
 if (
-    !Number.isFinite(
-        Number(valor)
+    normalized === "ALTA" ||
+    normalized === "FORTE" ||
+    normalized === "POSITIVO"
+) {
+
+    return "status-positive";
+}
+
+
+if (
+    normalized === "BAIXA" ||
+    normalized === "FRACO" ||
+    normalized === "NEGATIVO"
+) {
+
+    return "status-negative";
+}
+
+
+if (
+    normalized === "SOBRECOMPRADO" ||
+    normalized === "SOBREVENDIDO"
+) {
+
+    return "status-warning";
+}
+
+
+return "status-neutral";
+
+
+}
+
+/* =========================================================
+FORMATAÇÃO DO ATIVO
+========================================================= */
+
+function formatSymbol(
+symbol
+) {
+
+
+if (!symbol) {
+    return "--";
+}
+
+
+const quotes = [
+    "USDT",
+    "USDC",
+    "BTC",
+    "ETH",
+    "BNB"
+];
+
+
+for (
+    const quote of quotes
+) {
+
+    if (
+        symbol.endsWith(quote) &&
+        symbol.length > quote.length
+    ) {
+
+        return (
+            symbol.slice(
+                0,
+                -quote.length
+            ) +
+            " / " +
+            quote
+        );
+    }
+}
+
+
+return symbol;
+
+
+}
+
+/* =========================================================
+TIMEFRAME
+========================================================= */
+
+function formatTimeframe(
+timeframe
+) {
+
+
+const names = {
+
+    "1m":
+        "1 minuto",
+
+    "5m":
+        "5 minutos",
+
+    "15m":
+        "15 minutos",
+
+    "30m":
+        "30 minutos",
+
+    "1h":
+        "1 hora",
+
+    "4h":
+        "4 horas",
+
+    "1d":
+        "1 dia"
+};
+
+
+return (
+    names[timeframe] ||
+    timeframe
+);
+
+
+}
+
+/* =========================================================
+PREÇO
+========================================================= */
+
+function formatPrice(
+price
+) {
+
+
+if (
+    price === null ||
+    price === undefined ||
+    Number.isNaN(
+        Number(price)
     )
 ) {
 
     return "--";
-
 }
 
 
-const numero =
-    Number(valor);
+const value =
+    Number(price);
 
 
-/*
-   Para preços muito pequenos,
-   mostramos mais casas.
-*/
-
-let casas = 2;
+let decimals = 2;
 
 
-if (
-    numero < 1
-) {
+if (value < 1) {
 
-    casas = 6;
-
-} else if (
-    numero < 10
-) {
-
-    casas = 4;
+    decimals = 6;
 
 }
 
+else if (value < 10) {
 
-return numero.toLocaleString(
-    "pt-BR",
+    decimals = 4;
+}
+
+
+return value.toLocaleString(
+    "en-US",
     {
 
         minimumFractionDigits:
-            casas,
+            decimals,
 
         maximumFractionDigits:
-            casas
-
+            decimals
     }
 );
-```
+
 
 }
 
 /* =========================================================
-FORMATAR DECIMAL
+FINAL
 ========================================================= */
 
-function formatarDecimal(
-valor,
-casas = 2
-) {
-
-```
-if (
-    !Number.isFinite(
-        Number(valor)
-    )
-) {
-
-    return "--";
-
-}
-
-
-return Number(valor)
-    .toLocaleString(
-        "pt-BR",
-        {
-
-            minimumFractionDigits:
-                casas,
-
-            maximumFractionDigits:
-                casas
-
-        }
-    );
-```
-
-}
-
-/* =========================================================
-FORMATAR NÚMERO GRANDE
-========================================================= */
-
-function formatarNumeroGrande(
-valor
-) {
-
-```
-if (
-    !Number.isFinite(
-        Number(valor)
-    )
-) {
-
-    return "--";
-
-}
-
-
-const numero =
-    Number(valor);
-
-
-if (
-    numero >= 1000000000
-) {
-
-    return (
-        numero / 1000000000
-    ).toFixed(2) + "B";
-
-}
-
-
-if (
-    numero >= 1000000
-) {
-
-    return (
-        numero / 1000000
-    ).toFixed(2) + "M";
-
-}
-
-
-if (
-    numero >= 1000
-) {
-
-    return (
-        numero / 1000
-    ).toFixed(2) + "K";
-
-}
-
-
-return numero.toFixed(
-    0
+console.log(
+"PLANOS — app.js carregado."
 );
-```
-
-}
-
-/* =========================================================
-ESPERAR
-========================================================= */
-
-function esperar(
-milissegundos
-) {
-
-```
-return new Promise(
-    resolve =>
-        setTimeout(
-            resolve,
-            milissegundos
-        )
-);
-```
-
-}
-
-/* =========================================================
-REDIMENSIONAMENTO DO GRÁFICO
-========================================================= */
-
-window.addEventListener(
-"resize",
-() => {
-
-```
-    if (
-        candlesAtuais.length > 0 &&
-        ultimaAnalise
-    ) {
-
-        desenharGrafico(
-            candlesAtuais,
-            ultimaAnalise
-        );
-
-    }
-
-}
-```
-
-);
-
-/* =========================================================
-EXPOSIÇÃO GLOBAL
-========================================================= */
-
-window.TradeAnalyzer = {
-
-```
-executarAnalise,
-
-gerarCandlesSimulados,
-
-desenharGrafico,
-
-obterHistorico,
-
-limparHistorico
-```
-
-};
