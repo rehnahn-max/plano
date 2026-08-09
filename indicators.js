@@ -1,288 +1,175 @@
 /* =========================================================
-TRADE ANALYZER
+PLANOS — INDICADORES
 indicators.js
 
-Motor de indicadores técnicos
-
-Indicadores:
+Responsável pelos cálculos de:
 
 * SMA
 * EMA
 * RSI
 * MACD
-* Bollinger Bands
 * ATR
 * Volume
 * Tendência
+* Momentum
+* Volatilidade
   ========================================================= */
 
 /* =========================================================
-UTILIDADES
+SMA — MÉDIA MÓVEL SIMPLES
 ========================================================= */
 
-/**
+export function calculateSMA(values, period = 14) {
 
-* Arredonda um número para determinada quantidade de casas.
-  */
-  function arredondar(valor, casas = 2) {
 
-  if (!Number.isFinite(valor)) {
-  return 0;
-  }
-
-  const multiplicador = Math.pow(10, casas);
-
-  return Math.round(valor * multiplicador) / multiplicador;
-  }
-
-/**
-
-* Retorna o último valor válido de um array.
-  */
-  function ultimoValor(array) {
-
-  if (!Array.isArray(array) || array.length === 0) {
-  return null;
-  }
-
-  return array[array.length - 1];
-  }
-
-/**
-
-* Verifica se existe quantidade suficiente de dados.
-  */
-  function dadosSuficientes(array, quantidade) {
-
-  return (
-  Array.isArray(array) &&
-  array.length >= quantidade
-  );
-  }
-
-/* =========================================================
-SMA
-Simple Moving Average
-========================================================= */
-
-function calcularSMA(valores, periodo) {
-
-```
-if (
-    !Array.isArray(valores) ||
-    valores.length < periodo ||
-    periodo <= 0
-) {
-    return [];
+if (!Array.isArray(values) || values.length < period) {
+    return null;
 }
 
-const resultado = [];
+const slice = values.slice(-period);
 
-for (
-    let i = periodo - 1;
-    i < valores.length;
-    i++
-) {
-
-    let soma = 0;
-
-    for (
-        let j = i - periodo + 1;
-        j <= i;
-        j++
-    ) {
-
-        soma += Number(valores[j]) || 0;
-    }
-
-    resultado.push(
-        soma / periodo
-    );
-}
-
-return resultado;
-```
-
-}
-
-/* =========================================================
-EMA
-Exponential Moving Average
-========================================================= */
-
-function calcularEMA(valores, periodo) {
-
-```
-if (
-    !Array.isArray(valores) ||
-    valores.length < periodo ||
-    periodo <= 0
-) {
-    return [];
-}
-
-const resultado = [];
-
-const smaInicial =
-    calcularSMA(
-        valores.slice(0, periodo),
-        periodo
-    )[0];
-
-if (!Number.isFinite(smaInicial)) {
-    return [];
-}
-
-resultado.push(smaInicial);
-
-const multiplicador =
-    2 / (periodo + 1);
-
-let emaAnterior =
-    smaInicial;
-
-for (
-    let i = periodo;
-    i < valores.length;
-    i++
-) {
-
-    const preco =
-        Number(valores[i]);
-
-    if (!Number.isFinite(preco)) {
-        resultado.push(emaAnterior);
-        continue;
-    }
-
-    const emaAtual =
-        (
-            (preco - emaAnterior) *
-            multiplicador
-        ) +
-        emaAnterior;
-
-    resultado.push(emaAtual);
-
-    emaAnterior =
-        emaAtual;
-}
-
-return resultado;
-```
-
-}
-
-/* =========================================================
-RSI
-Relative Strength Index
-========================================================= */
-
-function calcularRSI(
-fechamentos,
-periodo = 14
-) {
-
-```
-if (
-    !Array.isArray(fechamentos) ||
-    fechamentos.length <= periodo
-) {
-    return [];
-}
-
-const ganhos = [];
-const perdas = [];
-
-for (
-    let i = 1;
-    i < fechamentos.length;
-    i++
-) {
-
-    const diferenca =
-        Number(fechamentos[i]) -
-        Number(fechamentos[i - 1]);
-
-    if (diferenca >= 0) {
-
-        ganhos.push(diferenca);
-        perdas.push(0);
-
-    } else {
-
-        ganhos.push(0);
-        perdas.push(
-            Math.abs(diferenca)
-        );
-    }
-}
-
-if (ganhos.length < periodo) {
-    return [];
-}
-
-let ganhoMedio =
-    ganhos
-        .slice(0, periodo)
-        .reduce(
-            (a, b) => a + b,
-            0
-        ) / periodo;
-
-let perdaMedia =
-    perdas
-        .slice(0, periodo)
-        .reduce(
-            (a, b) => a + b,
-            0
-        ) / periodo;
-
-const resultado = [];
-
-function calcularRSIAtual() {
-
-    if (perdaMedia === 0) {
-        return 100;
-    }
-
-    const RS =
-        ganhoMedio /
-        perdaMedia;
-
-    return 100 -
-        (100 / (1 + RS));
-}
-
-resultado.push(
-    calcularRSIAtual()
+const sum = slice.reduce(
+    (total, value) => total + Number(value),
+    0
 );
 
+return sum / period;
+
+
+}
+
+/* =========================================================
+EMA — MÉDIA MÓVEL EXPONENCIAL
+========================================================= */
+
+export function calculateEMA(values, period = 14) {
+
+
+if (!Array.isArray(values) || values.length < period) {
+    return [];
+}
+
+const numericValues = values.map(Number);
+
+const multiplier = 2 / (period + 1);
+
+const ema = [];
+
+let previousEMA =
+    numericValues
+        .slice(0, period)
+        .reduce(
+            (total, value) => total + value,
+            0
+        ) / period;
+
+ema.push(previousEMA);
+
 for (
-    let i = periodo;
-    i < ganhos.length;
+    let i = period;
+    i < numericValues.length;
     i++
 ) {
 
-    ganhoMedio =
-        (
-            (ganhoMedio * (periodo - 1)) +
-            ganhos[i]
-        ) / periodo;
+    const currentValue = numericValues[i];
 
-    perdaMedia =
-        (
-            (perdaMedia * (periodo - 1)) +
-            perdas[i]
-        ) / periodo;
+    const currentEMA =
+        (currentValue - previousEMA) *
+        multiplier +
+        previousEMA;
 
-    resultado.push(
-        calcularRSIAtual()
-    );
+    ema.push(currentEMA);
+
+    previousEMA = currentEMA;
 }
 
-return resultado;
-```
+return ema;
+
+
+}
+
+/* =========================================================
+RSI — ÍNDICE DE FORÇA RELATIVA
+========================================================= */
+
+export function calculateRSI(
+closes,
+period = 14
+) {
+
+
+if (
+    !Array.isArray(closes) ||
+    closes.length <= period
+) {
+    return null;
+}
+
+const prices = closes.map(Number);
+
+let gains = 0;
+let losses = 0;
+
+for (let i = 1; i <= period; i++) {
+
+    const difference =
+        prices[i] - prices[i - 1];
+
+    if (difference >= 0) {
+        gains += difference;
+    } else {
+        losses += Math.abs(difference);
+    }
+}
+
+let averageGain = gains / period;
+let averageLoss = losses / period;
+
+for (
+    let i = period + 1;
+    i < prices.length;
+    i++
+) {
+
+    const difference =
+        prices[i] - prices[i - 1];
+
+    const gain =
+        difference > 0
+            ? difference
+            : 0;
+
+    const loss =
+        difference < 0
+            ? Math.abs(difference)
+            : 0;
+
+    averageGain =
+        (
+            averageGain * (period - 1) +
+            gain
+        ) / period;
+
+    averageLoss =
+        (
+            averageLoss * (period - 1) +
+            loss
+        ) / period;
+}
+
+if (averageLoss === 0) {
+    return 100;
+}
+
+const relativeStrength =
+    averageGain / averageLoss;
+
+const rsi =
+    100 -
+    100 / (1 + relativeStrength);
+
+return Number(rsi.toFixed(2));
+
 
 }
 
@@ -290,1096 +177,576 @@ return resultado;
 MACD
 ========================================================= */
 
-function calcularMACD(
-fechamentos,
-periodoRapido = 12,
-periodoLento = 26,
-periodoSinal = 9
+export function calculateMACD(
+closes,
+fastPeriod = 12,
+slowPeriod = 26,
+signalPeriod = 9
 ) {
 
-```
+
 if (
-    !Array.isArray(fechamentos) ||
-    fechamentos.length < periodoLento
+    !Array.isArray(closes) ||
+    closes.length < slowPeriod
 ) {
-    return {
-
-        linhaMACD: [],
-        linhaSinal: [],
-        histograma: []
-
-    };
+    return null;
 }
 
-const emaRapida =
-    calcularEMA(
-        fechamentos,
-        periodoRapido
+const fastEMA =
+    calculateEMA(
+        closes,
+        fastPeriod
     );
 
-const emaLenta =
-    calcularEMA(
-        fechamentos,
-        periodoLento
+const slowEMA =
+    calculateEMA(
+        closes,
+        slowPeriod
     );
 
-
-/*
-   As EMAs começam em pontos diferentes.
-   Vamos alinhar os valores usando
-   o índice correspondente ao período lento.
-*/
-
-const deslocamento =
-    periodoLento -
-    periodoRapido;
-
-const linhaMACD = [];
-
-
-for (
-    let i = 0;
-    i < emaLenta.length;
-    i++
+if (
+    fastEMA.length === 0 ||
+    slowEMA.length === 0
 ) {
-
-    const indiceRapido =
-        i + deslocamento;
-
-    if (
-        indiceRapido >= 0 &&
-        indiceRapido < emaRapida.length
-    ) {
-
-        linhaMACD.push(
-            emaRapida[indiceRapido] -
-            emaLenta[i]
-        );
-    }
+    return null;
 }
 
 
-const linhaSinal =
-    calcularEMA(
-        linhaMACD,
-        periodoSinal
-    );
-
-
-const histograma = [];
-
-
 /*
-   A linha de sinal começa depois
-   da linha MACD.
+   O EMA rápida começa antes da EMA lenta.
+   Por isso alinhamos os valores pelo final.
 */
 
-const deslocamentoSinal =
-    linhaMACD.length -
-    linhaSinal.length;
+const offset =
+    fastEMA.length -
+    slowEMA.length;
 
+const macdLine = [];
 
 for (
     let i = 0;
-    i < linhaSinal.length;
+    i < slowEMA.length;
     i++
 ) {
 
-    const indiceMACD =
-        i + deslocamentoSinal;
+    const fastIndex =
+        i + offset;
 
-    histograma.push(
+    const value =
+        fastEMA[fastIndex] -
+        slowEMA[i];
 
-        linhaMACD[indiceMACD] -
-        linhaSinal[i]
+    macdLine.push(value);
+}
 
+
+const signalLine =
+    calculateEMA(
+        macdLine,
+        signalPeriod
     );
+
+if (signalLine.length === 0) {
+    return null;
+}
+
+const macdValue =
+    macdLine[macdLine.length - 1];
+
+const signalValue =
+    signalLine[signalLine.length - 1];
+
+const histogram =
+    macdValue - signalValue;
+
+
+let signal = "NEUTRO";
+
+if (macdValue > signalValue) {
+    signal = "ALTA";
+}
+
+if (macdValue < signalValue) {
+    signal = "BAIXA";
 }
 
 
 return {
 
-    linhaMACD,
-    linhaSinal,
-    histograma
+    macd: Number(
+        macdValue.toFixed(6)
+    ),
 
+    signal: Number(
+        signalValue.toFixed(6)
+    ),
+
+    histogram: Number(
+        histogram.toFixed(6)
+    ),
+
+    direction: signal
 };
-```
+
 
 }
 
 /* =========================================================
-BOLLINGER BANDS
+ATR — MÉDIA DO TRUE RANGE
 ========================================================= */
 
-function calcularBollinger(
-fechamentos,
-periodo = 20,
-desvios = 2
-) {
-
-```
-if (
-    !Array.isArray(fechamentos) ||
-    fechamentos.length < periodo
-) {
-    return {
-
-        superior: [],
-        media: [],
-        inferior: [],
-        largura: []
-
-    };
-}
-
-
-const superior = [];
-const media = [];
-const inferior = [];
-const largura = [];
-
-
-for (
-    let i = periodo - 1;
-    i < fechamentos.length;
-    i++
-) {
-
-    const valores =
-        fechamentos.slice(
-            i - periodo + 1,
-            i + 1
-        );
-
-
-    const soma =
-        valores.reduce(
-            (a, b) =>
-                a + Number(b),
-            0
-        );
-
-
-    const mediaAtual =
-        soma / periodo;
-
-
-    let somaQuadrados = 0;
-
-
-    for (const valor of valores) {
-
-        somaQuadrados +=
-            Math.pow(
-                Number(valor) -
-                mediaAtual,
-                2
-            );
-    }
-
-
-    const desvioPadrao =
-        Math.sqrt(
-            somaQuadrados /
-            periodo
-        );
-
-
-    const bandaSuperior =
-        mediaAtual +
-        (desvios * desvioPadrao);
-
-
-    const bandaInferior =
-        mediaAtual -
-        (desvios * desvioPadrao);
-
-
-    const larguraAtual =
-        bandaSuperior -
-        bandaInferior;
-
-
-    media.push(
-        mediaAtual
-    );
-
-    superior.push(
-        bandaSuperior
-    );
-
-    inferior.push(
-        bandaInferior
-    );
-
-    largura.push(
-        larguraAtual
-    );
-}
-
-
-return {
-
-    superior,
-    media,
-    inferior,
-    largura
-
-};
-```
-
-}
-
-/* =========================================================
-ATR
-Average True Range
-========================================================= */
-
-function calcularATR(
+export function calculateATR(
 candles,
-periodo = 14
+period = 14
 ) {
 
-```
+
 if (
     !Array.isArray(candles) ||
-    candles.length <= periodo
+    candles.length <= period
 ) {
-    return [];
+    return null;
 }
-
 
 const trueRanges = [];
 
+for (let i = 1; i < candles.length; i++) {
+
+    const current = candles[i];
+    const previous = candles[i - 1];
+
+    const high =
+        Number(current.high);
+
+    const low =
+        Number(current.low);
+
+    const previousClose =
+        Number(previous.close);
+
+    const range1 =
+        high - low;
+
+    const range2 =
+        Math.abs(
+            high - previousClose
+        );
+
+    const range3 =
+        Math.abs(
+            low - previousClose
+        );
+
+    const trueRange =
+        Math.max(
+            range1,
+            range2,
+            range3
+        );
+
+    trueRanges.push(trueRange);
+}
+
+if (trueRanges.length < period) {
+    return null;
+}
+
+const recentRanges =
+    trueRanges.slice(-period);
+
+const atr =
+    recentRanges.reduce(
+        (total, value) =>
+            total + value,
+        0
+    ) / period;
+
+return Number(
+    atr.toFixed(6)
+);
+
+
+}
+
+/* =========================================================
+VOLUME
+========================================================= */
+
+export function analyzeVolume(
+volumes,
+period = 20
+) {
+
+
+if (
+    !Array.isArray(volumes) ||
+    volumes.length < period
+) {
+    return null;
+}
+
+const numericVolumes =
+    volumes.map(Number);
+
+const currentVolume =
+    numericVolumes[
+        numericVolumes.length - 1
+    ];
+
+const averageVolume =
+    numericVolumes
+        .slice(-period)
+        .reduce(
+            (total, value) =>
+                total + value,
+            0
+        ) / period;
+
+if (averageVolume === 0) {
+    return {
+        current: currentVolume,
+        average: 0,
+        ratio: 0,
+        status: "NORMAL"
+    };
+}
+
+const ratio =
+    currentVolume /
+    averageVolume;
+
+let status = "NORMAL";
+
+if (ratio >= 1.5) {
+    status = "FORTE";
+} else if (ratio <= 0.7) {
+    status = "FRACO";
+}
+
+
+return {
+
+    current:
+        currentVolume,
+
+    average:
+        averageVolume,
+
+    ratio:
+        Number(ratio.toFixed(2)),
+
+    status:
+        status
+};
+
+
+}
+
+/* =========================================================
+TENDÊNCIA
+========================================================= */
+
+export function analyzeTrend(
+closes
+) {
+
+
+if (
+    !Array.isArray(closes) ||
+    closes.length < 50
+) {
+    return {
+        direction: "NEUTRO",
+        strength: 0
+    };
+}
+
+const ema9 =
+    calculateEMA(closes, 9);
+
+const ema21 =
+    calculateEMA(closes, 21);
+
+const ema50 =
+    calculateEMA(closes, 50);
+
+if (
+    !ema9.length ||
+    !ema21.length ||
+    !ema50.length
+) {
+    return {
+        direction: "NEUTRO",
+        strength: 0
+    };
+}
+
+const current9 =
+    ema9[ema9.length - 1];
+
+const current21 =
+    ema21[ema21.length - 1];
+
+const current50 =
+    ema50[ema50.length - 1];
+
+
+let direction = "NEUTRO";
+
+if (
+    current9 > current21 &&
+    current21 > current50
+) {
+    direction = "ALTA";
+}
+
+else if (
+    current9 < current21 &&
+    current21 < current50
+) {
+    direction = "BAIXA";
+}
+
+
+const difference =
+    Math.abs(
+        current9 - current50
+    );
+
+const strength =
+    current50 !== 0
+        ? Math.min(
+            100,
+            (
+                difference /
+                current50
+            ) * 1000
+        )
+        : 0;
+
+
+return {
+
+    direction,
+
+    strength:
+        Number(
+            strength.toFixed(2)
+        ),
+
+    ema9:
+        Number(
+            current9.toFixed(6)
+        ),
+
+    ema21:
+        Number(
+            current21.toFixed(6)
+        ),
+
+    ema50:
+        Number(
+            current50.toFixed(6)
+        )
+};
+
+
+}
+
+/* =========================================================
+MOMENTUM
+========================================================= */
+
+export function analyzeMomentum(
+closes,
+period = 10
+) {
+
+
+if (
+    !Array.isArray(closes) ||
+    closes.length <= period
+) {
+    return {
+        direction: "NEUTRO",
+        value: 0
+    };
+}
+
+const current =
+    Number(
+        closes[closes.length - 1]
+    );
+
+const previous =
+    Number(
+        closes[
+            closes.length - 1 - period
+        ]
+    );
+
+if (previous === 0) {
+    return {
+        direction: "NEUTRO",
+        value: 0
+    };
+}
+
+const momentum =
+    (
+        (current - previous) /
+        previous
+    ) * 100;
+
+
+let direction = "NEUTRO";
+
+if (momentum > 0.5) {
+    direction = "POSITIVO";
+}
+
+else if (momentum < -0.5) {
+    direction = "NEGATIVO";
+}
+
+
+return {
+
+    direction,
+
+    value:
+        Number(
+            momentum.toFixed(2)
+        )
+};
+
+
+}
+
+/* =========================================================
+VOLATILIDADE
+========================================================= */
+
+export function analyzeVolatility(
+closes,
+period = 20
+) {
+
+
+if (
+    !Array.isArray(closes) ||
+    closes.length < period
+) {
+    return {
+        level: "NORMAL",
+        value: 0
+    };
+}
+
+const values =
+    closes
+        .slice(-period)
+        .map(Number);
+
+const returns = [];
 
 for (
     let i = 1;
-    i < candles.length;
+    i < values.length;
     i++
 ) {
 
-    const atual =
-        candles[i];
+    if (values[i - 1] === 0) {
+        continue;
+    }
 
-    const anterior =
-        candles[i - 1];
-
-
-    const high =
-        Number(atual.high);
-
-    const low =
-        Number(atual.low);
-
-    const fechamentoAnterior =
-        Number(anterior.close);
-
-
-    const TR =
-        Math.max(
-
-            high - low,
-
-            Math.abs(
-                high -
-                fechamentoAnterior
-            ),
-
-            Math.abs(
-                low -
-                fechamentoAnterior
-            )
-
-        );
-
-
-    trueRanges.push(TR);
-}
-
-
-if (
-    trueRanges.length <
-    periodo
-) {
-    return [];
-}
-
-
-let atr =
-    trueRanges
-        .slice(0, periodo)
-        .reduce(
-            (a, b) => a + b,
-            0
-        ) / periodo;
-
-
-const resultado = [atr];
-
-
-for (
-    let i = periodo;
-    i < trueRanges.length;
-    i++
-) {
-
-    atr =
+    const variation =
         (
-            (atr * (periodo - 1)) +
-            trueRanges[i]
-        ) / periodo;
-
-
-    resultado.push(atr);
-}
-
-
-return resultado;
-```
-
-}
-
-/* =========================================================
-ANÁLISE DE VOLUME
-========================================================= */
-
-function analisarVolume(
-candles,
-periodo = 20
-) {
-
-```
-if (
-    !Array.isArray(candles) ||
-    candles.length < periodo + 1
-) {
-
-    return {
-
-        volumeAtual: 0,
-        volumeMedio: 0,
-        percentual: 0,
-        sinal: "NEUTRO"
-
-    };
-}
-
-
-const volumes =
-    candles.map(
-        candle =>
-            Number(candle.volume) || 0
-    );
-
-
-const volumeAtual =
-    ultimoValor(volumes);
-
-
-const ultimosVolumes =
-    volumes.slice(
-        -periodo - 1,
-        -1
-    );
-
-
-const volumeMedio =
-    ultimosVolumes.reduce(
-        (a, b) => a + b,
-        0
-    ) / ultimosVolumes.length;
-
-
-let percentual = 0;
-
-
-if (volumeMedio > 0) {
-
-    percentual =
-        (
-            (volumeAtual -
-            volumeMedio) /
-            volumeMedio
+            (values[i] - values[i - 1]) /
+            values[i - 1]
         ) * 100;
+
+    returns.push(variation);
 }
 
-
-let sinal =
-    "NEUTRO";
-
-
-if (percentual >= 30) {
-
-    sinal =
-        "FORTE";
-
-} else if (percentual <= -30) {
-
-    sinal =
-        "FRACO";
-}
-
-
-return {
-
-    volumeAtual,
-    volumeMedio,
-    percentual,
-    sinal
-
-};
-```
-
-}
-
-/* =========================================================
-ANÁLISE DE TENDÊNCIA
-========================================================= */
-
-function analisarTendencia(
-fechamentos,
-periodoCurto = 9,
-periodoLongo = 21
-) {
-
-```
-if (
-    !Array.isArray(fechamentos) ||
-    fechamentos.length < periodoLongo
-) {
-
+if (returns.length === 0) {
     return {
-
-        emaCurta: 0,
-        emaLonga: 0,
-        tendencia: "NEUTRO",
-        forca: 0
-
+        level: "NORMAL",
+        value: 0
     };
 }
 
-
-const emaCurtaArray =
-    calcularEMA(
-        fechamentos,
-        periodoCurto
-    );
-
-
-const emaLongaArray =
-    calcularEMA(
-        fechamentos,
-        periodoLongo
-    );
+const mean =
+    returns.reduce(
+        (total, value) =>
+            total + value,
+        0
+    ) / returns.length;
 
 
-const emaCurta =
-    ultimoValor(
-        emaCurtaArray
-    );
+const variance =
+    returns.reduce(
+        (total, value) =>
+            total +
+            Math.pow(
+                value - mean,
+                2
+            ),
+        0
+    ) / returns.length;
 
 
-const emaLonga =
-    ultimoValor(
-        emaLongaArray
-    );
+const standardDeviation =
+    Math.sqrt(variance);
 
 
-const precoAtual =
-    ultimoValor(
-        fechamentos
-    );
+let level = "NORMAL";
 
-
-let tendencia =
-    "NEUTRO";
-
-
-if (
-    emaCurta > emaLonga &&
-    precoAtual > emaCurta
-) {
-
-    tendencia =
-        "ALTA";
-
-} else if (
-    emaCurta < emaLonga &&
-    precoAtual < emaCurta
-) {
-
-    tendencia =
-        "BAIXA";
+if (standardDeviation >= 2) {
+    level = "ALTA";
 }
 
-
-let forca = 0;
-
-
-if (emaLonga !== 0) {
-
-    forca =
-        Math.abs(
-            (
-                (emaCurta -
-                emaLonga) /
-                emaLonga
-            ) * 100
-        );
+else if (standardDeviation <= 0.5) {
+    level = "BAIXA";
 }
 
 
 return {
 
-    emaCurta,
-    emaLonga,
-    tendencia,
-    forca
+    level,
 
+    value:
+        Number(
+            standardDeviation.toFixed(2)
+        )
 };
-```
+
 
 }
 
 /* =========================================================
-ANÁLISE DO RSI
+CLASSIFICAÇÃO DO RSI
 ========================================================= */
 
-function analisarRSI(
+export function classifyRSI(
 rsi
 ) {
 
-```
-if (!Number.isFinite(rsi)) {
 
-    return {
-
-        sinal: "NEUTRO",
-        descricao: "Sem dados"
-
-    };
+if (rsi === null || rsi === undefined) {
+    return "NEUTRO";
 }
-
 
 if (rsi <= 30) {
-
-    return {
-
-        sinal: "ALTA",
-        descricao: "Sobrevendido"
-
-    };
-
+    return "SOBREVENDIDO";
 }
-
 
 if (rsi >= 70) {
-
-    return {
-
-        sinal: "BAIXA",
-        descricao: "Sobrecomprado"
-
-    };
-
+    return "SOBRECOMPRADO";
 }
 
+return "NEUTRO";
 
-if (rsi >= 50) {
-
-    return {
-
-        sinal: "ALTA",
-        descricao: "Força compradora"
-
-    };
-
-}
-
-
-return {
-
-    sinal: "BAIXA",
-    descricao: "Força vendedora"
-
-};
-```
-
-}
-
-/* =========================================================
-ANÁLISE DO MACD
-========================================================= */
-
-function analisarMACD(
-macd,
-sinal
-) {
-
-```
-if (
-    !Number.isFinite(macd) ||
-    !Number.isFinite(sinal)
-) {
-
-    return {
-
-        sinal: "NEUTRO"
-
-    };
-}
-
-
-if (macd > sinal) {
-
-    return {
-
-        sinal: "ALTA"
-
-    };
-}
-
-
-if (macd < sinal) {
-
-    return {
-
-        sinal: "BAIXA"
-
-    };
-}
-
-
-return {
-
-    sinal: "NEUTRO"
-
-};
-```
-
-}
-
-/* =========================================================
-ANÁLISE DAS BOLLINGER
-========================================================= */
-
-function analisarBollinger(
-preco,
-superior,
-media,
-inferior
-) {
-
-```
-if (
-    !Number.isFinite(preco) ||
-    !Number.isFinite(superior) ||
-    !Number.isFinite(media) ||
-    !Number.isFinite(inferior)
-) {
-
-    return {
-
-        sinal: "NEUTRO",
-        descricao: "Sem dados"
-
-    };
-}
-
-
-if (preco <= inferior) {
-
-    return {
-
-        sinal: "ALTA",
-        descricao: "Próximo à banda inferior"
-
-    };
-
-}
-
-
-if (preco >= superior) {
-
-    return {
-
-        sinal: "BAIXA",
-        descricao: "Próximo à banda superior"
-
-    };
-
-}
-
-
-if (preco > media) {
-
-    return {
-
-        sinal: "ALTA",
-        descricao: "Acima da média"
-
-    };
-}
-
-
-return {
-
-    sinal: "BAIXA",
-    descricao: "Abaixo da média"
-
-};
-```
-
-}
-
-/* =========================================================
-MOTOR DE PONTUAÇÃO
-========================================================= */
-
-function calcularPontuacao(
-analise
-) {
-
-```
-let pontosAlta = 0;
-
-let pontosBaixa = 0;
-
-
-/*
-   RSI
-*/
-
-if (
-    analise.rsi &&
-    analise.rsi.sinal === "ALTA"
-) {
-
-    pontosAlta += 2;
-
-} else if (
-    analise.rsi &&
-    analise.rsi.sinal === "BAIXA"
-) {
-
-    pontosBaixa += 2;
-}
-
-
-/*
-   MACD
-*/
-
-if (
-    analise.macd &&
-    analise.macd.sinal === "ALTA"
-) {
-
-    pontosAlta += 2;
-
-} else if (
-    analise.macd &&
-    analise.macd.sinal === "BAIXA"
-) {
-
-    pontosBaixa += 2;
-}
-
-
-/*
-   EMA / Tendência
-*/
-
-if (
-    analise.tendencia &&
-    analise.tendencia.tendencia === "ALTA"
-) {
-
-    pontosAlta += 3;
-
-} else if (
-    analise.tendencia &&
-    analise.tendencia.tendencia === "BAIXA"
-) {
-
-    pontosBaixa += 3;
-}
-
-
-/*
-   Bollinger
-*/
-
-if (
-    analise.bollinger &&
-    analise.bollinger.sinal === "ALTA"
-) {
-
-    pontosAlta += 1;
-
-} else if (
-    analise.bollinger &&
-    analise.bollinger.sinal === "BAIXA"
-) {
-
-    pontosBaixa += 1;
-}
-
-
-/*
-   Volume
-*/
-
-if (
-    analise.volume &&
-    analise.volume.sinal === "FORTE"
-) {
-
-    /*
-       Volume forte aumenta o peso
-       da tendência atual.
-    */
-
-    if (
-        analise.tendencia &&
-        analise.tendencia.tendencia === "ALTA"
-    ) {
-
-        pontosAlta += 2;
-
-    } else if (
-        analise.tendencia &&
-        analise.tendencia.tendencia === "BAIXA"
-    ) {
-
-        pontosBaixa += 2;
-    }
-}
-
-
-/*
-   Determina o sinal
-*/
-
-let sinal =
-    "AGUARDAR";
-
-
-const total =
-    pontosAlta +
-    pontosBaixa;
-
-
-if (total > 0) {
-
-    const diferenca =
-        Math.abs(
-            pontosAlta -
-            pontosBaixa
-        );
-
-
-    /*
-       Exigimos vantagem mínima
-       para evitar sinais fracos.
-    */
-
-    if (
-        pontosAlta > pontosBaixa &&
-        diferenca >= 3
-    ) {
-
-        sinal =
-            "COMPRA";
-
-    } else if (
-        pontosBaixa > pontosAlta &&
-        diferenca >= 3
-    ) {
-
-        sinal =
-            "VENDA";
-    }
-}
-
-
-/*
-   Calcula confiança relativa.
-
-   IMPORTANTE:
-   Isso não é uma probabilidade
-   estatística real de mercado.
-
-   É apenas uma medida da força
-   relativa dos sinais analisados.
-*/
-
-let confianca = 0;
-
-
-if (total > 0) {
-
-    const maiorPontuacao =
-        Math.max(
-            pontosAlta,
-            pontosBaixa
-        );
-
-
-    confianca =
-        (
-            maiorPontuacao /
-            total
-        ) * 100;
-
-
-    /*
-       Se estiver muito equilibrado,
-       reduzimos a confiança.
-    */
-
-    if (
-        Math.abs(
-            pontosAlta -
-            pontosBaixa
-        ) <= 1
-    ) {
-
-        confianca =
-            Math.min(
-                confianca,
-                55
-            );
-    }
-}
-
-
-return {
-
-    pontosAlta,
-    pontosBaixa,
-    total,
-    sinal,
-    confianca:
-        arredondar(
-            confianca,
-            1
-        )
-
-};
-```
-
-}
-
-/* =========================================================
-CÁLCULO DOS NÍVEIS
-========================================================= */
-
-function calcularNiveis(
-preco,
-atr,
-sinal
-) {
-
-```
-if (
-    !Number.isFinite(preco) ||
-    !Number.isFinite(atr) ||
-    atr <= 0
-) {
-
-    return {
-
-        entrada: preco || 0,
-        stop: 0,
-        alvo: 0
-
-    };
-}
-
-
-const entrada =
-    preco;
-
-
-let stop = 0;
-
-let alvo = 0;
-
-
-/*
-   Compra
-*/
-
-if (sinal === "COMPRA") {
-
-    stop =
-        preco -
-        (atr * 1.5);
-
-    alvo =
-        preco +
-        (atr * 3);
-
-}
-
-
-/*
-   Venda
-*/
-
-else if (sinal === "VENDA") {
-
-    stop =
-        preco +
-        (atr * 1.5);
-
-    alvo =
-        preco -
-        (atr * 3);
-
-}
-
-
-/*
-   Aguardar
-*/
-
-else {
-
-    stop =
-        preco -
-        (atr * 1.5);
-
-    alvo =
-        preco +
-        (atr * 1.5);
-}
-
-
-return {
-
-    entrada:
-        arredondar(
-            entrada,
-            2
-        ),
-
-    stop:
-        arredondar(
-            stop,
-            2
-        ),
-
-    alvo:
-        arredondar(
-            alvo,
-            2
-        )
-
-};
-```
 
 }
 
@@ -1387,419 +754,229 @@ return {
 ANÁLISE COMPLETA
 ========================================================= */
 
-function analisarMercado(
+export function analyzeMarket(
 candles
 ) {
 
-```
+
 if (
     !Array.isArray(candles) ||
-    candles.length < 30
+    candles.length < 50
 ) {
-
-    return {
-
-        sucesso: false,
-
-        erro:
-            "Dados insuficientes para análise."
-
-    };
+    return null;
 }
 
 
-/*
-   Extrai os fechamentos.
-*/
-
-const fechamentos =
+const closes =
     candles.map(
-        candle =>
-            Number(candle.close)
+        candle => Number(candle.close)
     );
 
 
-const precoAtual =
-    ultimoValor(
-        fechamentos
+const volumes =
+    candles.map(
+        candle => Number(candle.volume)
     );
 
 
-/* =====================================================
-   RSI
-===================================================== */
+const rsi =
+    calculateRSI(closes, 14);
 
-const rsiArray =
-    calcularRSI(
-        fechamentos,
-        14
-    );
-
-
-const rsiAtual =
-    ultimoValor(
-        rsiArray
-    );
-
-
-const rsiAnalise =
-    analisarRSI(
-        rsiAtual
-    );
-
-
-/* =====================================================
-   MACD
-===================================================== */
 
 const macd =
-    calcularMACD(
-        fechamentos,
-        12,
-        26,
-        9
-    );
+    calculateMACD(closes);
 
 
-const macdAtual =
-    ultimoValor(
-        macd.linhaMACD
-    );
+const trend =
+    analyzeTrend(closes);
 
 
-const macdSinalAtual =
-    ultimoValor(
-        macd.linhaSinal
-    );
+const momentum =
+    analyzeMomentum(closes);
 
 
-const histogramaAtual =
-    ultimoValor(
-        macd.histograma
-    );
+const volatility =
+    analyzeVolatility(closes);
 
-
-const macdAnalise =
-    analisarMACD(
-        macdAtual,
-        macdSinalAtual
-    );
-
-
-/* =====================================================
-   EMA / TENDÊNCIA
-===================================================== */
-
-const tendencia =
-    analisarTendencia(
-        fechamentos,
-        9,
-        21
-    );
-
-
-/* =====================================================
-   BOLLINGER
-===================================================== */
-
-const bollinger =
-    calcularBollinger(
-        fechamentos,
-        20,
-        2
-    );
-
-
-const bandaSuperior =
-    ultimoValor(
-        bollinger.superior
-    );
-
-
-const bandaMedia =
-    ultimoValor(
-        bollinger.media
-    );
-
-
-const bandaInferior =
-    ultimoValor(
-        bollinger.inferior
-    );
-
-
-const bollingerAnalise =
-    analisarBollinger(
-        precoAtual,
-        bandaSuperior,
-        bandaMedia,
-        bandaInferior
-    );
-
-
-/* =====================================================
-   ATR
-===================================================== */
-
-const atrArray =
-    calcularATR(
-        candles,
-        14
-    );
-
-
-const atrAtual =
-    ultimoValor(
-        atrArray
-    );
-
-
-/* =====================================================
-   VOLUME
-===================================================== */
 
 const volume =
-    analisarVolume(
-        candles,
-        20
-    );
+    analyzeVolume(volumes);
 
 
-/* =====================================================
-   OBJETO DE ANÁLISE
-===================================================== */
-
-const analise = {
-
-    preco:
-        precoAtual,
-
-    rsi: {
-
-        valor:
-            arredondar(
-                rsiAtual,
-                2
-            ),
-
-        sinal:
-            rsiAnalise.sinal,
-
-        descricao:
-            rsiAnalise.descricao
-
-    },
+const atr =
+    calculateATR(candles);
 
 
-    macd: {
-
-        valor:
-            arredondar(
-                macdAtual,
-                6
-            ),
-
-        sinal:
-            arredondar(
-                macdSinalAtual,
-                6
-            ),
-
-        histograma:
-            arredondar(
-                histogramaAtual,
-                6
-            ),
-
-        direcao:
-            macdAnalise.sinal
-
-    },
+const rsiClassification =
+    classifyRSI(rsi);
 
 
-    tendencia: {
+/*
+   Sistema simples de pontuação.
 
-        ema9:
-            arredondar(
-                tendencia.emaCurta,
-                2
-            ),
+   Alta  = +1
+   Baixa = -1
+   Neutro = 0
+*/
 
-        ema21:
-            arredondar(
-                tendencia.emaLonga,
-                2
-            ),
-
-        tendencia:
-            tendencia.tendencia,
-
-        forca:
-            arredondar(
-                tendencia.forca,
-                2
-            )
-
-    },
+let score = 0;
 
 
-    bollinger: {
+if (trend) {
 
-        superior:
-            arredondar(
-                bandaSuperior,
-                2
-            ),
-
-        media:
-            arredondar(
-                bandaMedia,
-                2
-            ),
-
-        inferior:
-            arredondar(
-                bandaInferior,
-                2
-            ),
-
-        sinal:
-            bollingerAnalise.sinal,
-
-        descricao:
-            bollingerAnalise.descricao
-
-    },
-
-
-    atr: {
-
-        valor:
-            arredondar(
-                atrAtual,
-                2
-            )
-
-    },
-
-
-    volume: {
-
-        atual:
-            arredondar(
-                volume.volumeAtual,
-                2
-            ),
-
-        medio:
-            arredondar(
-                volume.volumeMedio,
-                2
-            ),
-
-        percentual:
-            arredondar(
-                volume.percentual,
-                2
-            ),
-
-        sinal:
-            volume.sinal
-
+    if (trend.direction === "ALTA") {
+        score += 1;
     }
 
-};
+    else if (
+        trend.direction === "BAIXA"
+    ) {
+        score -= 1;
+    }
+}
 
 
-/* =====================================================
-   PONTUAÇÃO
-===================================================== */
+if (macd) {
 
-const pontuacao =
-    calcularPontuacao(
-        analise
+    if (macd.direction === "ALTA") {
+        score += 1;
+    }
+
+    else if (
+        macd.direction === "BAIXA"
+    ) {
+        score -= 1;
+    }
+}
+
+
+if (rsi !== null) {
+
+    if (
+        rsi < 30
+    ) {
+        score += 1;
+    }
+
+    else if (
+        rsi > 70
+    ) {
+        score -= 1;
+    }
+}
+
+
+if (momentum) {
+
+    if (
+        momentum.direction === "POSITIVO"
+    ) {
+        score += 1;
+    }
+
+    else if (
+        momentum.direction === "NEGATIVO"
+    ) {
+        score -= 1;
+    }
+}
+
+
+let signal = "NEUTRO";
+
+if (score >= 2) {
+    signal = "COMPRA";
+}
+
+else if (score <= -2) {
+    signal = "VENDA";
+}
+
+
+const confidence =
+    Math.min(
+        100,
+        Math.abs(score) * 25
     );
 
-
-/* =====================================================
-   NÍVEIS
-===================================================== */
-
-const niveis =
-    calcularNiveis(
-        precoAtual,
-        atrAtual,
-        pontuacao.sinal
-    );
-
-
-/* =====================================================
-   RESULTADO FINAL
-===================================================== */
 
 return {
 
-    sucesso: true,
+    rsi: {
+        value: rsi,
+        classification:
+            rsiClassification
+    },
 
-    timestamp:
-        Date.now(),
+    macd,
 
-    preco:
-        precoAtual,
+    trend,
 
-    indicadores:
-        analise,
+    momentum,
 
-    pontuacao,
+    volatility,
 
-    niveis
+    volume,
 
+    atr,
+
+    score,
+
+    signal,
+
+    confidence
 };
-```
+
 
 }
 
 /* =========================================================
-EXPORTAÇÃO
+FUNÇÕES AUXILIARES
 ========================================================= */
 
-/*
-O app.js poderá utilizar todas essas funções
-através do objeto global TradeIndicators.
-*/
+export function formatIndicatorValue(
+value,
+decimals = 2
+) {
 
-window.TradeIndicators = {
 
-```
-arredondar,
+if (
+    value === null ||
+    value === undefined ||
+    Number.isNaN(Number(value))
+) {
+    return "--";
+}
 
-calcularSMA,
+return Number(value).toFixed(decimals);
 
-calcularEMA,
 
-calcularRSI,
+}
 
-calcularMACD,
+export function getSignalClass(
+signal
+) {
 
-calcularBollinger,
 
-calcularATR,
+switch (signal) {
 
-analisarVolume,
+    case "COMPRA":
+        return "buy";
 
-analisarTendencia,
+    case "VENDA":
+        return "sell";
 
-analisarRSI,
+    default:
+        return "neutral";
+}
 
-analisarMACD,
 
-analisarBollinger,
+}
 
-calcularPontuacao,
+/* =========================================================
+TESTE DO MÓDULO
+========================================================= */
 
-calcularNiveis,
-
-analisarMercado
-```
-
-};
+console.log(
+"PLANOS — indicators.js carregado"
+);
