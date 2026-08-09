@@ -151,7 +151,7 @@ initialize
 
 async function initialize() {
 
-```
+
 console.log(
     "================================="
 );
@@ -197,7 +197,7 @@ catch (error) {
         "Não foi possível iniciar o gráfico."
     );
 }
-```
+
 
 }
 
@@ -255,7 +255,7 @@ EVENTOS
 
 function setupEvents() {
 
-```
+
 if (assetSelect) {
 
     assetSelect.addEventListener(
@@ -352,7 +352,7 @@ window.addEventListener(
     "resize",
     resizeChart
 );
-```
+
 
 }
 
@@ -362,7 +362,7 @@ CARREGAR BIBLIOTECA DO GRÁFICO
 
 function loadChartLibrary() {
 
-```
+
 return new Promise(
     (resolve, reject) => {
 
@@ -440,7 +440,7 @@ return new Promise(
         );
     }
 );
-```
+
 
 }
 
@@ -450,7 +450,7 @@ CRIAR GRÁFICO
 
 function createChart() {
 
-```
+
 if (!chartElement) {
 
     throw new Error(
@@ -619,7 +619,7 @@ state.chart
 console.log(
     "Gráfico criado com sucesso."
 );
-```
+
 
 }
 
@@ -629,7 +629,7 @@ REDIMENSIONAR GRÁFICO
 
 function resizeChart() {
 
-```
+
 if (
     !state.chart ||
     !chartElement
@@ -650,7 +650,7 @@ state.chart.resize(
         350
     )
 );
-```
+
 
 }
 
