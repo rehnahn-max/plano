@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+```
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="description" content="Trade Analyzer - Plataforma pessoal para análise técnica de gráficos">
+
+<title>Trade Analyzer</title>
+
+<!-- CSS principal -->
+<link rel="stylesheet" href="style.css">
+
+<!-- Ícone da página -->
+<link rel="icon" href="assets/favicon.png" type="image/png">
+```
+
+</head>
+
+<body>
+
+```
+<!-- =====================================================
+     CABEÇALHO
+====================================================== -->
+
+<header class="topo">
+
+    <div class="logo-area">
+        <h1>TRADE <span>ANALYZER</span></h1>
+        <p>Análise técnica experimental</p>
+    </div>
+
+    <div class="status-sistema">
+        <span class="status-indicador"></span>
+        <span>Sistema online</span>
+    </div>
+
+</header>
+
+
+<!-- =====================================================
+     CONTEÚDO PRINCIPAL
+====================================================== -->
+
+<main class="container">
+
+
+    <!-- =================================================
+         CONTROLES
+    ================================================== -->
+
+    <section class="painel-controle">
+
+        <div class="campo">
+
+            <label for="ativo">Ativo</label>
+
+            <select id="ativo">
+
+                <option value="BTCUSDT">BTC / USDT</option>
+                <option value="ETHUSDT">ETH / USDT</option>
+                <option value="BNBUSDT">BNB / USDT</option>
+                <option value="SOLUSDT">SOL / USDT</option>
+                <option value="XRPUSDT">XRP / USDT</option>
+
+            </select>
+
+        </div>
+
+
+        <div class="campo">
+
+            <label for="timeframe">Timeframe</label>
+
+            <select id="timeframe">
+
+                <option value="1m">1 minuto</option>
+                <option value="5m" selected>5 minutos</option>
+                <option value="15m">15 minutos</option>
+                <option value="30m">30 minutos</option>
+                <option value="1h">1 hora</option>
+                <option value="4h">4 horas</option>
+                <option value="1d">1 dia</option>
+
+            </select>
+
+        </div>
+
+
+        <div class="campo">
+
+            <label for="periodo">Período de análise</label>
+
+            <select id="periodo">
+
+                <option value="50">50 candles</option>
+                <option value="100" selected>100 candles</option>
+                <option value="200">200 candles</option>
+                <option value="500">500 candles</option>
+
+            </select>
+
+        </div>
+
+
+        <button id="btnAnalisar" class="botao-analisar">
+
+            ANALISAR GRÁFICO
+
+        </button>
+
+    </section>
+
+
+
+    <!-- =================================================
+         INFORMAÇÕES DO ATIVO
+    ================================================== -->
+
+    <section class="informacoes-ativo">
+
+        <div class="info-card">
+
+            <span class="info-titulo">
+                ATIVO
+            </span>
+
+            <strong id="infoAtivo">
+                BTC / USDT
+            </strong>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <span class="info-titulo">
+                PREÇO
+            </span>
+
+            <strong id="precoAtual">
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <span class="info-titulo">
+                VARIAÇÃO
+            </span>
+
+            <strong id="variacaoAtual">
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <span class="info-titulo">
+                VOLUME
+            </span>
+
+            <strong id="volumeAtual">
+                --
+            </strong>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         GRÁFICO
+    ================================================== -->
+
+    <section class="painel-grafico">
+
+        <div class="painel-titulo">
+
+            <div>
+
+                <h2>Gráfico</h2>
+
+                <span id="graficoStatus">
+                    Aguardando análise...
+                </span>
+
+            </div>
+
+
+            <div class="timeframe-display">
+
+                <span id="timeframeAtual">
+                    5M
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div id="grafico">
+
+            <div class="grafico-placeholder">
+
+                <div class="icone-grafico">
+                    📊
+                </div>
+
+                <h3>Gráfico aguardando dados</h3>
+
+                <p>
+                    Selecione o ativo e clique em
+                    <strong>ANALISAR GRÁFICO</strong>.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         INDICADORES
+    ================================================== -->
+
+    <section class="painel-indicadores">
+
+        <div class="secao-titulo">
+
+            <h2>Indicadores técnicos</h2>
+
+            <span>
+                Análise automática
+            </span>
+
+        </div>
+
+
+        <div class="indicadores-grid">
+
+
+            <!-- RSI -->
+
+            <div class="indicador-card">
+
+                <div class="indicador-cabecalho">
+
+                    <h3>RSI</h3>
+
+                    <span id="rsiSinal" class="sinal neutro">
+                        AGUARDANDO
+                    </span>
+
+                </div>
+
+                <strong id="rsiValor">
+                    --
+                </strong>
+
+                <div class="indicador-barra">
+
+                    <div
+                        id="rsiBarra"
+                        class="barra-progresso"
+                        style="width: 0%;">
+                    </div>
+
+                </div>
+
+                <p>
+                    Índice de força relativa
+                </p>
+
+            </div>
+
+
+
+            <!-- MACD -->
+
+            <div class="indicador-card">
+
+                <div class="indicador-cabecalho">
+
+                    <h3>MACD</h3>
+
+                    <span id="macdSinal" class="sinal neutro">
+                        AGUARDANDO
+                    </span>
+
+                </div>
+
+                <strong id="macdValor">
+                    --
+                </strong>
+
+                <p>
+                    Tendência e momentum
+                </p>
+
+            </div>
+
+
+
+            <!-- EMA -->
+
+            <div class="indicador-card">
+
+                <div class="indicador-cabecalho">
+
+                    <h3>EMA 9 / 21</h3>
+
+                    <span id="emaSinal" class="sinal neutro">
+                        AGUARDANDO
+                    </span>
+
+                </div>
+
+                <strong id="emaValor">
+                    --
+                </strong>
+
+                <p>
+                    Direção da tendência
+                </p>
+
+            </div>
+
+
+
+            <!-- VOLUME -->
+
+            <div class="indicador-card">
+
+                <div class="indicador-cabecalho">
+
+                    <h3>VOLUME</h3>
+
+                    <span id="volumeSinal" class="sinal neutro">
+                        AGUARDANDO
+                    </span>
+
+                </div>
+
+                <strong id="volumeIndicador">
+                    --
+                </strong>
+
+                <p>
+                    Força do movimento
+                </p>
+
+            </div>
+
+
+
+            <!-- BOLLINGER -->
+
+            <div class="indicador-card">
+
+                <div class="indicador-cabecalho">
+
+                    <h3>BOLLINGER</h3>
+
+                    <span id="bollingerSinal" class="sinal neutro">
+                        AGUARDANDO
+                    </span>
+
+                </div>
+
+                <strong id="bollingerValor">
+                    --
+                </strong>
+
+                <p>
+                    Volatilidade do mercado
+                </p>
+
+            </div>
+
+
+
+            <!-- TENDÊNCIA -->
+
+            <div class="indicador-card">
+
+                <div class="indicador-cabecalho">
+
+                    <h3>TENDÊNCIA</h3>
+
+                    <span id="tendenciaSinal" class="sinal neutro">
+                        AGUARDANDO
+                    </span>
+
+                </div>
+
+                <strong id="tendenciaValor">
+                    --
+                </strong>
+
+                <p>
+                    Tendência predominante
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         RESULTADO DA ANÁLISE
+    ================================================== -->
+
+    <section class="resultado">
+
+        <div class="resultado-cabecalho">
+
+            <div>
+
+                <span class="resultado-label">
+                    SINAL PRINCIPAL
+                </span>
+
+                <h2 id="sinalPrincipal">
+                    AGUARDANDO
+                </h2>
+
+            </div>
+
+
+            <div class="confianca">
+
+                <span>
+                    Confiança
+                </span>
+
+                <strong id="confiancaValor">
+                    0%
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="barra-confianca">
+
+            <div
+                id="barraConfianca"
+                class="confianca-progresso"
+                style="width: 0%;">
+            </div>
+
+        </div>
+
+
+        <div class="resultado-detalhes">
+
+
+            <div class="resultado-item">
+
+                <span>
+                    Pontuação de alta
+                </span>
+
+                <strong id="pontosAlta">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="resultado-item">
+
+                <span>
+                    Pontuação de baixa
+                </span>
+
+                <strong id="pontosBaixa">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="resultado-item">
+
+                <span>
+                    Força do sinal
+                </span>
+
+                <strong id="forcaSinal">
+                    --
+                </strong>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         NÍVEIS OPERACIONAIS
+    ================================================== -->
+
+    <section class="niveis">
+
+        <div class="secao-titulo">
+
+            <h2>Níveis calculados</h2>
+
+            <span>
+                Valores experimentais
+            </span>
+
+        </div>
+
+
+        <div class="niveis-grid">
+
+
+            <div class="nivel-card entrada">
+
+                <span>
+                    ENTRADA
+                </span>
+
+                <strong id="nivelEntrada">
+                    --
+                </strong>
+
+            </div>
+
+
+            <div class="nivel-card stop">
+
+                <span>
+                    STOP LOSS
+                </span>
+
+                <strong id="nivelStop">
+                    --
+                </strong>
+
+            </div>
+
+
+            <div class="nivel-card alvo">
+
+                <span>
+                    TAKE PROFIT
+                </span>
+
+                <strong id="nivelAlvo">
+                    --
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         HISTÓRICO DE SINAIS
+    ================================================== -->
+
+    <section class="historico">
+
+        <div class="secao-titulo">
+
+            <h2>Histórico de análises</h2>
+
+            <button
+                id="btnLimparHistorico"
+                class="botao-secundario">
+
+                LIMPAR
+
+            </button>
+
+        </div>
+
+
+        <div class="tabela-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Horário</th>
+                        <th>Ativo</th>
+                        <th>Timeframe</th>
+                        <th>Preço</th>
+                        <th>Sinal</th>
+                        <th>Confiança</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="historicoTabela">
+
+                    <tr>
+
+                        <td colspan="6">
+
+                            Nenhuma análise realizada.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         AVISO
+    ================================================== -->
+
+    <section class="aviso">
+
+        <strong>⚠️ Modo experimental</strong>
+
+        <p>
+            Este aplicativo é exclusivamente para testes e
+            estudos de análise técnica. Os sinais gerados são
+            estimativas baseadas em indicadores e não representam
+            garantia de alta ou baixa do mercado.
+        </p>
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =====================================================
+     RODAPÉ
+====================================================== -->
+
+<footer>
+
+    <p>
+        Trade Analyzer • Projeto pessoal de análise técnica
+    </p>
+
+    <span>
+        Experimental
+    </span>
+
+</footer>
+
+
+
+<!-- =====================================================
+     JAVASCRIPT
+====================================================== -->
+
+<script src="indicators.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
