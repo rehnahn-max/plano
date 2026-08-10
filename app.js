@@ -1891,26 +1891,6 @@ return value.toLocaleString(
 
 }
 
-{
-    ativo: "EURUSD",
-    timeframe: "1m",
-
-    price: 0,
-
-    trend: {},
-    momentum: {},
-    volume: {},
-    volatility: {},
-
-    patterns: [],
-
-    score: 0,
-
-    signal: "NEUTRO",
-
-    lastUpdate: Date.now()
-}
-
 /* =========================================================
 FINAL
 ========================================================= */
